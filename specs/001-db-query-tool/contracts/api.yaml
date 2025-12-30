@@ -1,0 +1,428 @@
+openapi: 3.0.3
+info:
+  title: Database Query Tool API
+  version: 1.0.0
+  description: REST API for database query tool with natural language SQL generation
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Development server
+
+paths:
+  /dbs:
+    get:
+      summary: Get all database connections
+      description: Retrieve a list of all configured database connections
+      operationId: getDatabases
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  databases:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DatabaseConnection'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    put:
+      summary: Add a new database connection
+      description: Create a new database connection configuration
+      operationId: createDatabase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatabaseConnectionCreate'
+      responses:
+        '201':
+          description: Database connection created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseConnection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Database name already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /dbs/{name}:
+    get:
+      summary: Get database metadata
+      description: Retrieve metadata (tables, views, columns) for a specific database
+      operationId: getDatabaseMetadata
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Database connection name
+      responses:
+        '200':
+          description: Database metadata retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatabaseMetadata'
+        '404':
+          description: Database connection not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /dbs/{name}/query:
+    post:
+      summary: Execute SQL query
+      description: Execute a SQL query against the specified database
+      operationId: executeQuery
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Database connection name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryRequest'
+      responses:
+        '200':
+          description: Query executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: Query not allowed (not a SELECT statement)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Database connection not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/responses/NotFound'
+        '408':
+          description: Query execution timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/responses/Timeout'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /dbs/{name}/query/natural:
+    post:
+      summary: Generate and execute SQL from natural language
+      description: Convert natural language description to SQL and execute it
+      operationId: executeNaturalLanguageQuery
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Database connection name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NaturalLanguageQueryRequest'
+      responses:
+        '200':
+          description: Natural language query executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NaturalLanguageQueryResult'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Database connection not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/responses/NotFound'
+        '408':
+          description: Query execution timeout
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/responses/Timeout'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  schemas:
+    DatabaseConnection:
+      type: object
+      required:
+        - id
+        - name
+        - url
+        - createdAt
+        - isActive
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        url:
+          type: string
+          format: uri
+        description:
+          type: string
+          maxLength: 200
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+
+    DatabaseConnectionCreate:
+      type: object
+      required:
+        - url
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Optional custom name, auto-generated if not provided
+        url:
+          type: string
+          format: uri
+          example: postgresql://user:pass@localhost:5432/mydb
+        description:
+          type: string
+          maxLength: 200
+
+    DatabaseMetadata:
+      type: object
+      required:
+        - database
+        - tables
+        - views
+      properties:
+        database:
+          type: string
+        tables:
+          type: array
+          items:
+            $ref: '#/components/schemas/TableMetadata'
+        views:
+          type: array
+          items:
+            $ref: '#/components/schemas/ViewMetadata'
+
+    TableMetadata:
+      type: object
+      required:
+        - name
+        - schema
+        - columns
+      properties:
+        name:
+          type: string
+        schema:
+          type: string
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColumnMetadata'
+
+    ViewMetadata:
+      type: object
+      required:
+        - name
+        - schema
+        - columns
+      properties:
+        name:
+          type: string
+        schema:
+          type: string
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColumnMetadata'
+
+    ColumnMetadata:
+      type: object
+      required:
+        - name
+        - dataType
+        - isNullable
+      properties:
+        name:
+          type: string
+        dataType:
+          type: string
+        isNullable:
+          type: boolean
+        isPrimaryKey:
+          type: boolean
+        defaultValue:
+          type: string
+          nullable: true
+
+    QueryRequest:
+      type: object
+      required:
+        - sql
+      properties:
+        sql:
+          type: string
+          description: SQL SELECT statement to execute
+
+    QueryResult:
+      type: object
+      required:
+        - columns
+        - rows
+        - rowCount
+        - executionTimeMs
+      properties:
+        columns:
+          type: array
+          items:
+            type: string
+        rows:
+          type: array
+          items:
+            type: array
+            description: Array of column values for this row
+        rowCount:
+          type: integer
+          minimum: 0
+        executionTimeMs:
+          type: integer
+          minimum: 0
+        truncated:
+          type: boolean
+          description: Whether results were truncated due to size limits
+
+    NaturalLanguageQueryRequest:
+      type: object
+      required:
+        - prompt
+      properties:
+        prompt:
+          type: string
+          description: Natural language description of desired query
+
+    NaturalLanguageQueryResult:
+      type: object
+      required:
+        - generatedSql
+        - columns
+        - rows
+        - rowCount
+        - executionTimeMs
+      properties:
+        generatedSql:
+          type: string
+          description: SQL generated from natural language
+        columns:
+          type: array
+          items:
+            type: string
+        rows:
+          type: array
+          items:
+            type: array
+        rowCount:
+          type: integer
+          minimum: 0
+        executionTimeMs:
+          type: integer
+          minimum: 0
+        truncated:
+          type: boolean
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          enum: [bad_request, not_found, forbidden, timeout, server_error]
+        message:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+
+  responses:
+    BadRequest:
+      description: Invalid request data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Operation not allowed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Timeout:
+      description: Operation timed out
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
