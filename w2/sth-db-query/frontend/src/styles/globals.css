@@ -1,0 +1,70 @@
+@import '~antd/dist/reset.css';
+@import './tailwind.css';
+
+/* Global styles */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f5f5f5;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Custom component styles */
+.query-editor {
+  @apply bg-white border border-gray-200 rounded-lg shadow-sm;
+}
+
+.query-results {
+  @apply bg-white border border-gray-200 rounded-lg shadow-sm;
+}
+
+.metadata-viewer {
+  @apply bg-white border border-gray-200 rounded-lg shadow-sm;
+}
+
+/* Ant Design theme overrides */
+.ant-layout {
+  background: #f5f5f5;
+}
+
+.ant-card {
+  @apply shadow-sm;
+}
+
+.ant-card-head {
+  @apply border-b border-gray-200;
+}
+
+.ant-table {
+  @apply shadow-sm;
+}
+
+.ant-table-thead > tr > th {
+  @apply bg-gray-50 font-medium;
+}
+
+/* Monaco Editor integration */
+.monaco-editor {
+  @apply border border-gray-300 rounded;
+}
+
+.monaco-editor .margin {
+  @apply bg-gray-50;
+}
+
+/* Utility classes */
+.text-code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+}
+
+.bg-code {
+  @apply bg-gray-900 text-green-400;
+}

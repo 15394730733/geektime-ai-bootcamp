@@ -23,16 +23,16 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create project structure per implementation plan
-- [ ] T002 [P] Setup Python backend project with uv in ./w2/sth-db-query/backend/
-- [ ] T003 [P] Setup React frontend project with Vite in ./w2/sth-db-query/frontend/
-- [ ] T004 [P] Configure backend environment variables in ./w2/sth-db-query/backend/.env.example
-- [ ] T005 [P] Configure frontend environment variables in ./w2/sth-db-query/frontend/.env.example
-- [ ] T006 Create SQLite database schema in ./w2/sth-db-query/.db_query/db_query.db
-- [ ] T007 [P] Configure CORS middleware in backend for all origins
-- [ ] T008 [P] Setup basic logging configuration in backend
-- [ ] T009 [P] Setup test directories structure (backend/tests/, frontend/tests/)
-- [ ] T010 Create docker-compose.yml for development environment
+- [X] T001 Create project structure per implementation plan
+- [X] T002 [P] Setup Python backend project with uv in ./w2/sth-db-query/backend/
+- [X] T003 [P] Setup React frontend project with Vite in ./w2/sth-db-query/frontend/
+- [X] T004 [P] Configure backend environment variables in ./w2/sth-db-query/backend/.env.example
+- [X] T005 [P] Configure frontend environment variables in ./w2/sth-db-query/frontend/.env.example
+- [X] T006 Create SQLite database schema in ./w2/sth-db-query/.db_query/db_query.db
+- [X] T007 [P] Configure CORS middleware in backend for all origins
+- [X] T008 [P] Setup basic logging configuration in backend
+- [X] T009 [P] Setup test directories structure (backend/tests/, frontend/tests/)
+- [X] T010 Create docker-compose.yml for development environment
 
 ---
 
@@ -42,19 +42,19 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T011 Setup SQLAlchemy database models and session management in backend/app/models/__init__.py
-- [ ] T012 [P] Create Pydantic schemas for API requests/responses in backend/app/schemas/
-- [ ] T013 [P] Setup FastAPI application with basic middleware in backend/app/main.py
-- [ ] T014 [P] Configure SQLAlchemy async session in backend/app/core/database.py
-- [ ] T015 [P] Create base CRUD operations in backend/app/crud/__init__.py
-- [ ] T016 [P] Setup basic error handling and response models in backend/app/utils/response.py
-- [ ] T017 [P] Configure Pydantic settings for environment variables in backend/app/core/config.py
-- [ ] T018 [P] Setup LLM service integration with OpenAI SDK in backend/app/services/llm.py
-- [ ] T019 [P] Create SQL validation utilities with sqlglot in backend/app/core/security.py
-- [ ] T020 [P] Setup frontend TypeScript configuration and basic component structure
-- [ ] T021 [P] Configure Refine5 data provider and router in frontend/src/App.tsx
-- [ ] T022 [P] Setup Tailwind CSS and Ant Design theme in frontend
-- [ ] T023 [P] Create API client utilities in frontend/src/services/api.ts
+- [X] T011 Setup SQLAlchemy database models and session management in backend/app/models/__init__.py
+- [X] T012 [P] Create Pydantic schemas for API requests/responses in backend/app/schemas/
+- [X] T013 [P] Setup FastAPI application with basic middleware in backend/app/main.py
+- [X] T014 [P] Configure SQLAlchemy async session in backend/app/core/database.py
+- [X] T015 [P] Create base CRUD operations in backend/app/crud/__init__.py
+- [X] T016 [P] Setup basic error handling and response models in backend/app/utils/response.py
+- [X] T017 [P] Configure Pydantic settings for environment variables in backend/app/core/config.py
+- [X] T018 [P] Setup LLM service integration with OpenAI SDK in backend/app/services/llm.py
+- [X] T019 [P] Create SQL validation utilities with sqlglot in backend/app/core/security.py
+- [X] T020 [P] Setup frontend TypeScript configuration and basic component structure
+- [X] T021 [P] Configure Refine5 data provider and router in frontend/src/App.tsx
+- [X] T022 [P] Setup Tailwind CSS and Ant Design theme in frontend
+- [X] T023 [P] Create API client utilities in frontend/src/services/api.ts
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
