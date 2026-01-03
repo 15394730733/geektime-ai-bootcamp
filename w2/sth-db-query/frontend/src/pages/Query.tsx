@@ -78,10 +78,13 @@ export const QueryPage: React.FC = () => {
 
     setLoading(true);
     try {
+      console.log('Executing query:', query, 'on database:', selectedDatabase);
       const result = await apiClient.executeQuery(selectedDatabase, { sql: query });
+      console.log('Query result:', result);
       setResults(result);
       message.success(`Query executed successfully (${result.execution_time_ms}ms)`);
     } catch (error: any) {
+      console.error('Query execution error:', error);
       message.error(error.message || 'Query execution failed');
       setResults(null);
     } finally {

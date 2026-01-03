@@ -9,6 +9,7 @@ from typing import List, Optional, Dict, Any
 from urllib.parse import urlparse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+import time
 
 from app.crud.database import (
     get_databases, get_database, create_database, update_database, delete_database,
@@ -416,3 +417,68 @@ class DatabaseService:
 
         except Exception as e:
             raise DatabaseServiceError(f"Failed to extract database metadata: {str(e)}")
+
+    async def execute_query(self, db: AsyncSession, database_name: str, sql: str, max_rows: int = 1000) -> Dict[str, Any]:
+        """Execute a SQL query against the specified database."""
+        try:
+            # Get the database connection
+            database_conn = await self.get_database(db, database_name)
+            if not database_conn:
+                raise DatabaseServiceError(f"Database '{database_name}' not found")
+
+            # Parse database URL
+            parsed = urlparse(database_conn.url)
+            host = parsed.hostname
+            port = parsed.port or 5432
+            database = parsed.path.lstrip('/')
+            username = parsed.username
+            password = parsed.password
+
+            import time
+            start_time = time.time()
+
+            # Connect to PostgreSQL and execute query
+            conn = psycopg2.connect(
+                host=host,
+                port=port,
+                database=database,
+                user=username,
+                password=password
+            )
+
+            try:
+                cursor = conn.cursor()
+
+                # Execute the query
+                cursor.execute(sql)
+
+                # Get column names
+                columns = [desc[0] for desc in cursor.description] if cursor.description else []
+
+                # Fetch all rows (with limit)
+                rows = cursor.fetchall()
+                truncated = len(rows) > max_rows
+
+                if truncated:
+                    rows = rows[:max_rows]
+
+                # Convert rows to list of lists (JSON serializable)
+                rows = [list(row) for row in rows]
+
+                execution_time_ms = int((time.time() - start_time) * 1000)
+
+                return {
+                    "columns": columns,
+                    "rows": rows,
+                    "row_count": len(rows),
+                    "execution_time_ms": execution_time_ms,
+                    "truncated": truncated
+                }
+
+            finally:
+                conn.close()
+
+        except psycopg2.Error as e:
+            raise DatabaseServiceError(f"Database query failed: {str(e)}")
+        except Exception as e:
+            raise DatabaseServiceError(f"Query execution failed: {str(e)}")

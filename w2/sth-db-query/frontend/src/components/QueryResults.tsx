@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Table, Card, Typography, Tag, Space } from 'antd';
+import { Table, Card, Typography, Tag, Space, Button } from 'antd';
 import { DownloadOutlined, CopyOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -27,6 +27,8 @@ export const QueryResults: React.FC<QueryResultsProps> = ({
   truncated = false,
   loading = false
 }) => {
+  console.log('QueryResults props:', { columns, rows, rowCount, executionTimeMs, truncated, loading });
+
   const tableColumns = columns.map((col, index) => ({
     title: col,
     dataIndex: index,
@@ -41,6 +43,8 @@ export const QueryResults: React.FC<QueryResultsProps> = ({
     });
     return rowData;
   });
+
+  console.log('Table data:', tableData);
 
   const handleExport = () => {
     // TODO: Implement CSV/JSON export
