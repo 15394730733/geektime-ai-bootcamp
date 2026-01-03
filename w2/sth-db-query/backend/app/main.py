@@ -27,10 +27,14 @@ async def lifespan(app: FastAPI):
 
     # Create database tables on startup
     try:
+        logger.info("Attempting to create database tables...")
         await create_tables()
         logger.info("Database tables created successfully")
     except Exception as e:
         logger.error(f"Failed to create database tables: {e}")
+        logger.error(f"Exception type: {type(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise
 
     yield

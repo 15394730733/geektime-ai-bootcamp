@@ -79,7 +79,7 @@ class APIClient {
 
   constructor() {
     this.client = axios.create({
-      baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1',
+      baseURL: import.meta.env.VITE_API_URL || '/api/v1',
       timeout: 30000, // 30 seconds timeout
       headers: {
         'Content-Type': 'application/json',
@@ -106,15 +106,28 @@ class APIClient {
 
   // Database connections
   async getDatabases(): Promise<DatabaseConnection[]> {
-    const response = await this.client.get<APIResponse<DatabaseConnection[]>>('/dbs');
-    if (!response.data.success) {
-      throw new Error(response.data.message);
+    const response = await this.client.get<any>('/dbs/');
+
+    // Handle both wrapped and direct array responses
+    let result: DatabaseConnection[] = [];
+    if (Array.isArray(response.data)) {
+      // Direct array response
+      result = response.data;
+    } else if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+      // Wrapped response
+      if (!response.data.success) {
+        throw new Error(response.data.message);
+      }
+      result = response.data.data || [];
+    } else {
+      throw new Error('Unexpected response format');
     }
-    return response.data.data || [];
+
+    return result;
   }
 
   async createDatabase(data: Omit<DatabaseConnection, 'id' | 'created_at' | 'updated_at'>): Promise<DatabaseConnection> {
-    const response = await this.client.post<APIResponse<DatabaseConnection>>('/dbs', data);
+    const response = await this.client.put<APIResponse<DatabaseConnection>>(`/dbs/${data.name}`, data);
     if (!response.data.success) {
       throw new Error(response.data.message);
     }

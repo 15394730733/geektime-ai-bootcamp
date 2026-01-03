@@ -7,7 +7,7 @@ import routerBindings, {
   NavigateToResource,
   UnsavedChangesNotifier,
 } from "@refinedev/react-router-v6";
-import dataProvider from "@refinedev/simple-rest";
+import { dataProvider } from "./services/dataProvider";
 import { ColorModeContextProvider } from "./contexts/color-mode";
 
 import {
@@ -30,7 +30,7 @@ function App() {
         <ColorModeContextProvider>
           <AntdApp>
             <Refine
-              dataProvider={dataProvider("http://localhost:8000/api/v1")}
+              dataProvider={dataProvider}
               notificationProvider={useNotificationProvider}
               routerProvider={routerBindings}
               resources={[

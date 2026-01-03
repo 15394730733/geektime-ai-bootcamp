@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database Configuration
-    database_url: str = "sqlite+aiosqlite:///./.db_query/db_query.db"
+    database_url: str = f"sqlite+aiosqlite:///{os.path.join(os.path.dirname(__file__), '../../.db_query/db_query.db')}"
 
     # Server Configuration
     HOST: str = "0.0.0.0"
@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # CORS Settings
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "http://localhost:5174", "http://localhost:5176"]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

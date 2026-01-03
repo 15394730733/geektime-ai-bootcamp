@@ -5,9 +5,9 @@
  */
 
 import React from 'react';
-import { List, Button, Space, Tag, Modal, message } from 'antd';
+import { List, Button, Space, Tag, Popconfirm, message } from 'antd';
 import { EditOutlined, DeleteOutlined, DatabaseOutlined } from '@ant-design/icons';
-import { useList, useDelete } from '@refinedev/core';
+import { useDelete } from '@refinedev/core';
 
 interface DatabaseConnection {
   id: string;
@@ -20,18 +20,22 @@ interface DatabaseConnection {
 }
 
 interface DatabaseListProps {
+  data?: DatabaseConnection[];
+  loading?: boolean;
   onEdit?: (record: DatabaseConnection) => void;
   onDelete?: (id: string) => void;
+  onRefresh?: () => void;
 }
 
 export const DatabaseList: React.FC<DatabaseListProps> = ({
+  data = [],
+  loading = false,
   onEdit,
-  onDelete
+  onDelete,
+  onRefresh
 }) => {
-  const { data, isLoading, refetch } = useList<DatabaseConnection>({
-    resource: 'dbs',
-  });
-
+  console.log("DatabaseList received data:", data);
+  console.log("DatabaseList received loading:", loading);
   const { mutate: deleteMutation } = useDelete();
 
   const handleDelete = (id: string) => {
@@ -48,7 +52,7 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
             {
               onSuccess: () => {
                 message.success('Database connection deleted successfully');
-                refetch();
+                onRefresh?.();
               },
               onError: () => {
                 message.error('Failed to delete database connection');
@@ -62,8 +66,8 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
 
   return (
     <List
-      loading={isLoading}
-      dataSource={data?.data || []}
+      loading={loading}
+      dataSource={data}
       renderItem={(item) => (
         <List.Item
           actions={[

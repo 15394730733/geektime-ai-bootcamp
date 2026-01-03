@@ -49,6 +49,14 @@ export const QueryPage: React.FC = () => {
     }
   };
 
+  // Expose loadDatabases function globally for cross-page communication
+  React.useEffect(() => {
+    (window as any).refreshQueryPageDatabases = loadDatabases;
+    return () => {
+      delete (window as any).refreshQueryPageDatabases;
+    };
+  }, []);
+
   const loadMetadata = async (databaseName: string) => {
     setMetadataLoading(true);
     try {

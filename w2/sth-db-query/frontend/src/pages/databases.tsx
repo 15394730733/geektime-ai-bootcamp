@@ -22,6 +22,8 @@ export const DatabaseListPage = () => {
     resource: "dbs",
   });
 
+  console.log("DatabaseListPage tableProps:", tableProps);
+
   const handleCreate = () => {
     setFormMode('create');
     setEditingRecord(undefined);
@@ -36,7 +38,12 @@ export const DatabaseListPage = () => {
 
   const handleFormSuccess = () => {
     setFormVisible(false);
+    // Refresh the table data after successful form submission
     tableProps.refetch?.();
+    // Also refresh the query page databases if it's loaded
+    if ((window as any).refreshQueryPageDatabases) {
+      (window as any).refreshQueryPageDatabases();
+    }
   };
 
   const handleFormCancel = () => {
@@ -48,6 +55,8 @@ export const DatabaseListPage = () => {
       headerButtons={<CreateButton onClick={handleCreate} />}
     >
       <DatabaseList
+        data={tableProps.dataSource}
+        loading={tableProps.loading}
         onEdit={handleEdit}
         onDelete={(id) => {
           Modal.confirm({
@@ -58,6 +67,7 @@ export const DatabaseListPage = () => {
             },
           });
         }}
+        onRefresh={() => tableProps.refetch?.()}
       />
 
       <DatabaseForm
