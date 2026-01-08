@@ -5,6 +5,7 @@ Pytest configuration and fixtures for the Database Query Tool.
 import pytest
 import asyncio
 from typing import Generator
+from unittest.mock import patch, AsyncMock
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -143,3 +144,41 @@ def sample_natural_language_query():
     return {
         "prompt": "Show me all users in the system"
     }
+
+
+@pytest.fixture(scope="function", autouse=True)
+def mock_database_connection_test():
+    """Mock database connection test to always succeed.
+    
+    This fixture automatically mocks the _test_connection method in DatabaseService
+    to always return success, allowing API tests to run without requiring real database connections.
+    """
+    with patch('app.services.database.DatabaseService._test_connection') as mock_test:
+        # Mock successful connection test
+        mock_test.return_value = {
+            "success": True,
+            "message": "Connection successful",
+            "connection_time": 0.1
+        }
+        yield mock_test
+
+
+@pytest.fixture(scope="function", autouse=True)
+def clean_database():
+    """Clean up database before each test to ensure isolation."""
+    # This will run before each test to ensure a clean state
+    import os
+    db_path = ".db_query/db_query.db"
+    if os.path.exists(db_path):
+        try:
+            os.remove(db_path)
+        except (OSError, PermissionError):
+            # If we can't remove it, that's okay - the test will handle duplicates
+            pass
+    yield
+    # Clean up after test as well
+    if os.path.exists(db_path):
+        try:
+            os.remove(db_path)
+        except (OSError, PermissionError):
+            pass

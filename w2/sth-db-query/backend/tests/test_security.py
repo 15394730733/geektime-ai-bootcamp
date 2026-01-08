@@ -5,11 +5,11 @@ Unit tests for SQL validation and security utilities.
 import pytest
 from app.core.security import (
     validate_and_sanitize_sql,
-    SQLValidationError,
     is_select_statement,
     validate_sql_syntax,
     extract_table_names
 )
+from app.core.errors import ValidationError, SQLSyntaxError
 
 
 class TestSQLValidation:
@@ -55,10 +55,10 @@ class TestSQLValidation:
 
         测试拒绝INSERT语句的安全措施：
         - 验证INSERT语句被正确识别和拒绝
-        - 检查抛出适当的SQLValidationError
+        - 检查抛出适当的ValidationError
         """
         sql = "INSERT INTO users (name) VALUES ('test')"
-        with pytest.raises(SQLValidationError, match="Only SELECT statements are allowed"):
+        with pytest.raises(ValidationError, match="Only SELECT statements are allowed"):
             validate_and_sanitize_sql(sql)
 
     def test_reject_update_statement(self):
@@ -66,10 +66,10 @@ class TestSQLValidation:
 
         测试拒绝UPDATE语句的安全措施：
         - 验证UPDATE语句被正确识别和拒绝
-        - 检查抛出适当的SQLValidationError
+        - 检查抛出适当的ValidationError
         """
         sql = "UPDATE users SET name = 'test' WHERE id = 1"
-        with pytest.raises(SQLValidationError, match="Only SELECT statements are allowed"):
+        with pytest.raises(ValidationError, match="Only SELECT statements are allowed"):
             validate_and_sanitize_sql(sql)
 
     def test_reject_delete_statement(self):
@@ -77,10 +77,10 @@ class TestSQLValidation:
 
         测试拒绝DELETE语句的安全措施：
         - 验证DELETE语句被正确识别和拒绝
-        - 检查抛出适当的SQLValidationError
+        - 检查抛出适当的ValidationError
         """
         sql = "DELETE FROM users WHERE id = 1"
-        with pytest.raises(SQLValidationError, match="Only SELECT statements are allowed"):
+        with pytest.raises(ValidationError, match="Only SELECT statements are allowed"):
             validate_and_sanitize_sql(sql)
 
     def test_reject_drop_statement(self):
@@ -88,10 +88,10 @@ class TestSQLValidation:
 
         测试拒绝DROP语句的安全措施：
         - 验证DROP语句被正确识别和拒绝
-        - 检查抛出适当的SQLValidationError
+        - 检查抛出适当的ValidationError
         """
         sql = "DROP TABLE users"
-        with pytest.raises(SQLValidationError, match="Only SELECT statements are allowed"):
+        with pytest.raises(ValidationError, match="Only SELECT statements are allowed"):
             validate_and_sanitize_sql(sql)
 
     def test_reject_create_statement(self):
@@ -99,10 +99,10 @@ class TestSQLValidation:
 
         测试拒绝CREATE语句的安全措施：
         - 验证CREATE语句被正确识别和拒绝
-        - 检查抛出适当的SQLValidationError
+        - 检查抛出适当的ValidationError
         """
         sql = "CREATE TABLE test (id INTEGER)"
-        with pytest.raises(SQLValidationError, match="Only SELECT statements are allowed"):
+        with pytest.raises(ValidationError, match="Only SELECT statements are allowed"):
             validate_and_sanitize_sql(sql)
 
     def test_reject_alter_statement(self):
@@ -110,10 +110,10 @@ class TestSQLValidation:
 
         测试拒绝ALTER语句的安全措施：
         - 验证ALTER语句被正确识别和拒绝
-        - 检查抛出适当的SQLValidationError
+        - 检查抛出适当的ValidationError
         """
         sql = "ALTER TABLE users ADD COLUMN email VARCHAR(255)"
-        with pytest.raises(SQLValidationError, match="Only SELECT statements are allowed"):
+        with pytest.raises(ValidationError, match="Only SELECT statements are allowed"):
             validate_and_sanitize_sql(sql)
 
     def test_reject_invalid_sql_syntax(self):
@@ -121,10 +121,10 @@ class TestSQLValidation:
 
         测试拒绝无效SQL语法：
         - 验证语法错误的SQL被正确拒绝
-        - 检查抛出适当的SQLValidationError
+        - 检查抛出适当的ValidationError
         """
         sql = "SELEC * FORM users"  # Invalid syntax
-        with pytest.raises(SQLValidationError, match="Only SELECT statements are allowed"):
+        with pytest.raises(ValidationError, match="Only SELECT statements are allowed"):
             validate_and_sanitize_sql(sql)
 
     def test_empty_sql_rejection(self):
@@ -132,10 +132,10 @@ class TestSQLValidation:
 
         测试拒绝空SQL输入：
         - 验证空字符串被正确拒绝
-        - 检查抛出适当的SQLValidationError
+        - 检查抛出适当的ValidationError
         """
         sql = ""
-        with pytest.raises(SQLValidationError, match="SQL query cannot be empty"):
+        with pytest.raises(ValidationError, match="SQL query cannot be empty"):
             validate_and_sanitize_sql(sql)
 
     def test_whitespace_only_sql_rejection(self):
@@ -143,10 +143,10 @@ class TestSQLValidation:
 
         测试拒绝仅包含空白字符的SQL：
         - 验证只含空格/换行符的输入被拒绝
-        - 检查抛出适当的SQLValidationError
+        - 检查抛出适当的ValidationError
         """
         sql = "   \n\t   "
-        with pytest.raises(SQLValidationError, match="SQL query cannot be empty"):
+        with pytest.raises(ValidationError, match="SQL query cannot be empty"):
             validate_and_sanitize_sql(sql)
 
 

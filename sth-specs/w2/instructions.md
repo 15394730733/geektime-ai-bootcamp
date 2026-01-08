@@ -57,3 +57,7 @@ POST /api/v1/dbs/{name}/query/natural
 
 ## 测试
 运行后端和前端，根据test.rest 用curl 测试后端已实现的路由；然后用playwright代开前端进行测试，任何测试问题，都请深度思考后再修复
+
+## ui ux界面优化 
+
+![alt text](image.png) query界面使用这样的页面布局

@@ -5,7 +5,7 @@ Database-related Pydantic schemas.
 import re
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class DatabaseBase(BaseModel):
@@ -23,7 +23,7 @@ class DatabaseBase(BaseModel):
             raise ValueError('URL must be a valid PostgreSQL connection string starting with postgresql:// or postgres://')
 
         # Extract and validate basic components
-        url_pattern = r'^(postgresql|postgres)://([^:/@]+)(?::([^@]*))?@([^:/]+)(?::(\d+))?/([^?]+)$'
+        url_pattern = r'^(postgresql|postgres)://([^:/@]+)(?::([^@]*))?@([^:/]+)(?::(\d+))?/([^?]+)(?:\?.*)?$'
         match = re.match(url_pattern, v)
 
         if not match:
@@ -45,24 +45,64 @@ class DatabaseCreate(DatabaseBase):
     pass
 
 
+class DatabaseUpdate(BaseModel):
+    """Schema for updating a database connection."""
+    url: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=200)
+
+    @field_validator('url')
+    @classmethod
+    def validate_postgresql_url(cls, v: Optional[str]) -> Optional[str]:
+        """Validate PostgreSQL connection URL format."""
+        if v is None:
+            return v
+            
+        # Basic PostgreSQL URL pattern validation
+        if not v.startswith(('postgresql://', 'postgres://')):
+            raise ValueError('URL must be a valid PostgreSQL connection string starting with postgresql:// or postgres://')
+
+        # Extract and validate basic components
+        url_pattern = r'^(postgresql|postgres)://([^:/@]+)(?::([^@]*))?@([^:/]+)(?::(\d+))?/([^?]+)(?:\?.*)?$'
+        match = re.match(url_pattern, v)
+
+        if not match:
+            raise ValueError('Invalid PostgreSQL URL format. Expected: postgresql://user:pass@host:port/database')
+
+        return v
+
+
 class Database(DatabaseBase):
     """Database connection schema."""
     id: str
-    created_at: datetime
-    updated_at: datetime
-    is_active: bool = True
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+    is_active: bool = Field(default=True, alias="isActive")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+        alias_generator=lambda field_name: ''.join(
+            word.capitalize() if i > 0 else word 
+            for i, word in enumerate(field_name.split('_'))
+        )
+    )
 
 
 class ColumnMetadata(BaseModel):
     """Column metadata schema."""
     name: str
-    data_type: str
-    is_nullable: bool
-    is_primary_key: bool = False
-    default_value: Optional[str] = None
+    data_type: str = Field(alias="dataType")
+    is_nullable: bool = Field(alias="isNullable")
+    is_primary_key: bool = Field(default=False, alias="isPrimaryKey")
+    default_value: Optional[str] = Field(None, alias="defaultValue")
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda field_name: ''.join(
+            word.capitalize() if i > 0 else word 
+            for i, word in enumerate(field_name.split('_'))
+        )
+    )
 
 
 class TableMetadata(BaseModel):
@@ -71,6 +111,14 @@ class TableMetadata(BaseModel):
     db_schema: str = Field(default="public", alias="schema")
     columns: List[ColumnMetadata]
 
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda field_name: ''.join(
+            word.capitalize() if i > 0 else word 
+            for i, word in enumerate(field_name.split('_'))
+        )
+    )
+
 
 class ViewMetadata(BaseModel):
     """View metadata schema."""
@@ -78,9 +126,25 @@ class ViewMetadata(BaseModel):
     db_schema: str = Field(default="public", alias="schema")
     columns: List[ColumnMetadata]
 
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda field_name: ''.join(
+            word.capitalize() if i > 0 else word 
+            for i, word in enumerate(field_name.split('_'))
+        )
+    )
+
 
 class DatabaseMetadata(BaseModel):
     """Database metadata schema."""
     database: str
     tables: List[TableMetadata]
     views: List[ViewMetadata]
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        alias_generator=lambda field_name: ''.join(
+            word.capitalize() if i > 0 else word 
+            for i, word in enumerate(field_name.split('_'))
+        )
+    )

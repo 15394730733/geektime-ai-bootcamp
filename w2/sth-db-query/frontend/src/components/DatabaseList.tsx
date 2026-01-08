@@ -1,124 +1,191 @@
 /**
- * Database Connection List Component
+ * DatabaseList Component
  *
- * Displays a list of database connections with management options
+ * Displays all stored database connections with status and selection functionality
  */
 
 import React from 'react';
-import { List, Button, Space, Tag, Popconfirm, message } from 'antd';
-import { EditOutlined, DeleteOutlined, DatabaseOutlined } from '@ant-design/icons';
-import { useDelete } from '@refinedev/core';
+import { List, Card, Badge, Typography, Button, Tooltip } from 'antd';
+import { DatabaseOutlined, CheckCircleOutlined, ExclamationCircleOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { DatabaseConnection } from '../services/api';
 
-interface DatabaseConnection {
-  id: string;
-  name: string;
-  url: string;
-  description?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+const { Text, Title } = Typography;
 
-interface DatabaseListProps {
+export interface DatabaseListProps {
   data?: DatabaseConnection[];
   loading?: boolean;
-  onEdit?: (record: DatabaseConnection) => void;
+  onEdit?: (database: DatabaseConnection) => void;
   onDelete?: (id: string) => void;
   onRefresh?: () => void;
 }
+
+const getStatusIcon = (isActive: boolean) => {
+  if (isActive) {
+    return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
+  }
+  return <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />;
+};
+
+const getStatusBadge = (isActive: boolean) => {
+  return (
+    <Badge
+      status={isActive ? 'success' : 'error'}
+      text={isActive ? 'Active' : 'Inactive'}
+    />
+  );
+};
+
+const formatLastConnected = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+  
+  if (diffInHours < 1) {
+    return 'Just now';
+  } else if (diffInHours < 24) {
+    return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+  } else {
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+  }
+};
 
 export const DatabaseList: React.FC<DatabaseListProps> = ({
   data = [],
   loading = false,
   onEdit,
   onDelete,
-  onRefresh
+  onRefresh,
 }) => {
-  console.log("DatabaseList received data:", data);
-  console.log("DatabaseList received loading:", loading);
-  const { mutate: deleteMutation } = useDelete();
-
-  const handleDelete = (id: string) => {
-    if (onDelete) {
-      onDelete(id);
-    } else {
-      // Fallback delete logic
-      Modal.confirm({
-        title: 'Confirm Deletion',
-        content: 'Are you sure you want to delete this database connection?',
-        onOk: () => {
-          deleteMutation(
-            { resource: 'dbs', id },
-            {
-              onSuccess: () => {
-                message.success('Database connection deleted successfully');
-                onRefresh?.();
-              },
-              onError: () => {
-                message.error('Failed to delete database connection');
-              }
-            }
-          );
-        },
-      });
-    }
-  };
-
-  return (
-    <List
-      loading={loading}
-      dataSource={data}
-      renderItem={(item) => (
-        <List.Item
+  const databases = data || [];
+  const renderDatabaseItem = (database: DatabaseConnection) => {
+    return (
+      <List.Item
+        key={database.id}
+        style={{
+          padding: 0,
+          border: 'none',
+        }}
+      >
+        <Card
+          hoverable
+          size="small"
+          style={{
+            width: '100%',
+            marginBottom: 8,
+            border: '1px solid #d9d9d9',
+            backgroundColor: 'white',
+          }}
+          styles={{ body: { padding: '12px 16px' } }}
           actions={[
             <Button
               key="edit"
               type="link"
-              icon={<EditOutlined />}
-              onClick={() => onEdit?.(item)}
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.(database);
+              }}
             >
               Edit
             </Button>,
-            <Popconfirm
+            <Button
               key="delete"
-              title="Are you sure you want to delete this database connection?"
-              onConfirm={() => handleDelete(item.id)}
-              okText="Yes"
-              cancelText="No"
+              type="link"
+              size="small"
+              danger
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.(database.name);
+              }}
             >
-              <Button
-                type="link"
-                danger
-                icon={<DeleteOutlined />}
-              >
-                Delete
-              </Button>
-            </Popconfirm>
+              Delete
+            </Button>,
           ]}
         >
-          <List.Item.Meta
-            avatar={<DatabaseOutlined style={{ color: '#1890ff' }} />}
-            title={
-              <Space>
-                {item.name}
-                {item.is_active ? (
-                  <Tag color="green">Active</Tag>
-                ) : (
-                  <Tag color="red">Inactive</Tag>
-                )}
-              </Space>
-            }
-            description={
-              <div>
-                <div>{item.description || 'No description'}</div>
-                <div style={{ color: '#666', fontSize: '12px' }}>
-                  Created: {new Date(item.created_at).toLocaleDateString()}
-                </div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+                <DatabaseOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+                <Title level={5} style={{ margin: 0, fontSize: '14px' }} ellipsis>
+                  {database.name}
+                </Title>
               </div>
-            }
+              
+              {database.description && (
+                <Text
+                  type="secondary"
+                  style={{ fontSize: '12px', display: 'block', marginBottom: 4 }}
+                  ellipsis
+                >
+                  {database.description}
+                </Text>
+              )}
+              
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  {getStatusIcon(database.isActive)}
+                  <span style={{ marginLeft: 4, fontSize: '12px' }}>
+                    {getStatusBadge(database.isActive)}
+                  </span>
+                </div>
+                
+                {database.updatedAt && (
+                  <Tooltip title={`Last connected: ${new Date(database.updatedAt).toLocaleString()}`}>
+                    <div style={{ display: 'flex', alignItems: 'center', fontSize: '11px', color: '#8c8c8c' }}>
+                      <ClockCircleOutlined style={{ marginRight: 4 }} />
+                      {formatLastConnected(database.updatedAt)}
+                    </div>
+                  </Tooltip>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+      </List.Item>
+    );
+  };
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <Title level={4} style={{ margin: 0 }}>
+          Database Connections
+        </Title>
+        {onRefresh && (
+          <Button
+            type="text"
+            size="small"
+            onClick={onRefresh}
+            loading={loading}
+          >
+            Refresh
+          </Button>
+        )}
+      </div>
+
+      {databases.length === 0 && !loading ? (
+        <Card style={{ textAlign: 'center', padding: '40px 20px' }}>
+          <DatabaseOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: 16 }} />
+          <Title level={4} type="secondary">
+            No Database Connections
+          </Title>
+          <Text type="secondary">
+            Add your first database connection to get started
+          </Text>
+        </Card>
+      ) : (
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          <List
+            loading={loading}
+            dataSource={databases}
+            renderItem={renderDatabaseItem}
+            style={{ height: '100%' }}
           />
-        </List.Item>
+        </div>
       )}
-    />
+    </div>
   );
 };
+
+export default DatabaseList;

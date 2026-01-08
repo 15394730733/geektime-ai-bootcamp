@@ -105,7 +105,7 @@ def init_database():
         conn.commit()
 
         print(f"✅ Database initialized successfully at: {db_path}")
-        print("📊 Created tables:"
+        print("📊 Created tables:")
         print("   - database_connections")
         print("   - database_metadata")
         print("   - query_history")

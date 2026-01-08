@@ -5,6 +5,7 @@ Database connection service layer with validation.
 import re
 import psycopg2
 import psycopg2.extras
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 from urllib.parse import urlparse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,17 +18,15 @@ from app.crud.database import (
 )
 from app.models.database import DatabaseConnection
 from app.models.metadata import DatabaseMetadata
-from app.schemas.database import DatabaseCreate, Database
+from app.schemas.database import DatabaseCreate, DatabaseUpdate, Database
 from app.core.security import validate_and_sanitize_sql
+from app.core.errors import (
+    DatabaseQueryError, NetworkError, AuthenticationError, ConfigurationError,
+    ValidationError, TimeoutError, categorize_psycopg2_error, categorize_timeout_error
+)
 
-
-class DatabaseServiceError(Exception):
-    """Exception raised when database service operations fail."""
-
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
-        self.message = message
-        self.details = details or {}
-        super().__init__(message)
+# Alias for backward compatibility
+DatabaseServiceError = DatabaseQueryError
 
 
 class DatabaseService:
@@ -48,31 +47,110 @@ class DatabaseService:
 
     async def create_database(self, db: AsyncSession, database_data: DatabaseCreate) -> Database:
         """Create a new database connection with validation."""
-        # Validate the database data
-        await self._validate_database_data(db, database_data)
+        try:
+            # Validate the database data
+            await self._validate_database_data(db, database_data)
 
-        # Test the connection
-        connection_test = await self._test_connection(database_data.url)
-        if not connection_test["success"]:
-            raise DatabaseServiceError(f"Database connection test failed: {connection_test['message']}")
+            # Test the connection
+            connection_test = await self._test_connection(database_data.url)
+            if not connection_test["success"]:
+                # The _test_connection method now returns categorized errors
+                error_info = connection_test.get("error_info")
+                if error_info and isinstance(error_info, DatabaseQueryError):
+                    raise error_info
+                else:
+                    raise NetworkError(
+                        message=f"Database connection test failed: {connection_test['message']}",
+                        technical_details=connection_test.get('error', '')
+                    )
 
-        # Create the database connection
-        connection = await create_database(db, database_data)
-        return Database.model_validate(connection)
+            # Create the database connection
+            connection = await create_database(db, database_data)
+            return Database.model_validate(connection)
+        except DatabaseQueryError:
+            raise
+        except Exception as e:
+            raise DatabaseQueryError(
+                message=f"Failed to create database connection: {str(e)}",
+                technical_details=str(e)
+            )
 
     async def update_database(self, db: AsyncSession, name: str, database_data: DatabaseCreate) -> Optional[Database]:
         """Update an existing database connection."""
         # Validate the database data
         await self._validate_database_data(db, database_data, exclude_name=name)
 
-        # Test the connection if URL changed
+        # Get existing connection to check if URL changed
         existing = await get_database(db, name)
-        if existing and existing.url != database_data.url:
-            await self._test_connection(database_data.url)
+        if not existing:
+            return None
+            
+        url_changed = existing.url != database_data.url
+
+        # Test the connection if URL changed
+        if url_changed:
+            connection_test = await self._test_connection(database_data.url)
+            if not connection_test["success"]:
+                error_info = connection_test.get("error_info")
+                if error_info and isinstance(error_info, DatabaseQueryError):
+                    raise error_info
+                else:
+                    raise NetworkError(
+                        message=f"Database connection test failed: {connection_test['message']}",
+                        technical_details=connection_test.get('error', '')
+                    )
 
         # Update the database connection
         connection = await update_database(db, name, database_data)
-        return Database.model_validate(connection) if connection else None
+        if not connection:
+            return None
+            
+        # Refresh metadata if URL changed to ensure metadata persistence
+        if url_changed:
+            try:
+                await self.refresh_database_metadata(db, connection.url, connection.id)
+            except Exception as e:
+                # Log warning but don't fail the update
+                # In a production system, you'd use proper logging
+                print(f"Warning: Failed to refresh metadata after database update for '{name}': {str(e)}")
+        
+        return Database.model_validate(connection)
+
+    async def update_database_partial(self, db: AsyncSession, name: str, update_data: DatabaseUpdate) -> Optional[Database]:
+        """Update an existing database connection with partial data."""
+        # Get existing connection
+        existing = await get_database(db, name)
+        if not existing:
+            return None
+
+        # Only validate and test connection if URL is being changed
+        url_changed = False
+        if update_data.url is not None and existing.url != update_data.url:
+            url_changed = True
+            # Validate URL format
+            self._validate_url_format(update_data.url)
+            
+            # Test the new connection
+            connection_test = await self._test_connection(update_data.url)
+            if not connection_test["success"]:
+                error_info = connection_test.get("error_info")
+                if error_info and isinstance(error_info, DatabaseQueryError):
+                    raise error_info
+                else:
+                    raise NetworkError(
+                        message=f"Database connection test failed: {connection_test['message']}",
+                        technical_details=connection_test.get('error', '')
+                    )
+
+        # Create a full DatabaseCreate object for the existing update method
+        full_update_data = DatabaseCreate(
+            name=existing.name,  # Keep existing name
+            url=update_data.url if update_data.url is not None else existing.url,
+            description=update_data.description if update_data.description is not None else existing.description
+        )
+
+        # Use existing update method
+        return await self.update_database(db, name, full_update_data)
 
     async def delete_database(self, db: AsyncSession, name: str) -> bool:
         """Delete a database connection."""
@@ -81,6 +159,120 @@ class DatabaseService:
     async def test_connection(self, url: str) -> Dict[str, Any]:
         """Test database connection and return status."""
         return await self._test_connection(url)
+
+    async def get_connection_status(self, db: AsyncSession, name: str) -> bool:
+        """Get the connection status of a database."""
+        try:
+            connection = await get_database(db, name)
+            if not connection:
+                raise DatabaseServiceError(f"Database '{name}' not found")
+            return connection.is_active
+        except Exception as e:
+            raise DatabaseServiceError(f"Failed to get connection status: {str(e)}")
+
+    async def update_connection_status(self, db: AsyncSession, name: str, is_active: bool) -> Optional[Database]:
+        """Update the connection status of a database."""
+        try:
+            connection = await get_database(db, name)
+            if not connection:
+                raise DatabaseServiceError(f"Database '{name}' not found")
+            
+            connection.is_active = is_active
+            await db.commit()
+            await db.refresh(connection)
+            return Database.model_validate(connection)
+        except Exception as e:
+            raise DatabaseServiceError(f"Failed to update connection status: {str(e)}")
+
+    async def ensure_metadata_persistence(self, db: AsyncSession, name: str) -> Dict[str, Any]:
+        """
+        Ensure metadata is persisted for a database connection.
+        
+        This method checks if metadata exists for the database and refreshes it if needed.
+        Validates requirement 8.3: metadata updates are saved to SQLite database.
+        """
+        try:
+            # Get the database connection
+            database_conn = await self.get_database(db, name)
+            if not database_conn:
+                raise DatabaseServiceError(f"Database '{name}' not found")
+            
+            # Check if metadata exists
+            existing_metadata = await self.get_database_metadata(db, name)
+            
+            # If no metadata exists, extract and store it
+            if not existing_metadata or not existing_metadata.get("tables"):
+                await self.refresh_database_metadata(db, database_conn.url, database_conn.id)
+                refreshed_metadata = await self.get_database_metadata(db, name)
+                
+                return {
+                    "database": name,
+                    "metadata_refreshed": True,
+                    "tables_count": len(refreshed_metadata.get("tables", [])),
+                    "views_count": len(refreshed_metadata.get("views", [])),
+                    "message": "Metadata was missing and has been refreshed"
+                }
+            else:
+                return {
+                    "database": name,
+                    "metadata_refreshed": False,
+                    "tables_count": len(existing_metadata.get("tables", [])),
+                    "views_count": len(existing_metadata.get("views", [])),
+                    "message": "Metadata already exists and is persisted"
+                }
+                
+        except Exception as e:
+            raise DatabaseServiceError(f"Failed to ensure metadata persistence for '{name}': {str(e)}")
+
+    async def force_metadata_refresh(self, db: AsyncSession, name: str) -> Dict[str, Any]:
+        """
+        Force a metadata refresh for a database connection.
+        
+        This ensures that any changes to the database schema are captured
+        and persisted in the metadata store.
+        """
+        try:
+            # Get the database connection
+            database_conn = await self.get_database(db, name)
+            if not database_conn:
+                raise DatabaseServiceError(f"Database '{name}' not found")
+            
+            # Force refresh metadata
+            await self.refresh_database_metadata(db, database_conn.url, database_conn.id)
+            refreshed_metadata = await self.get_database_metadata(db, name)
+            
+            return {
+                "database": name,
+                "metadata_refreshed": True,
+                "tables_count": len(refreshed_metadata.get("tables", [])),
+                "views_count": len(refreshed_metadata.get("views", [])),
+                "message": "Metadata has been forcefully refreshed and persisted"
+            }
+            
+        except Exception as e:
+            raise DatabaseServiceError(f"Failed to force metadata refresh for '{name}': {str(e)}")
+        """Get the current connection status for a database."""
+        try:
+            database_conn = await self.get_database(db, name)
+            if not database_conn:
+                raise DatabaseServiceError(f"Database '{name}' not found")
+            
+            # Test the actual connection
+            connection_test = await self._test_connection(database_conn.url)
+            
+            # Update the stored status based on the test result
+            if connection_test["success"] != database_conn.is_active:
+                await self.update_connection_status(db, name, connection_test["success"])
+                database_conn.is_active = connection_test["success"]
+            
+            return {
+                "name": database_conn.name,
+                "is_active": database_conn.is_active,
+                "last_tested": datetime.utcnow().isoformat(),
+                "connection_test": connection_test
+            }
+        except Exception as e:
+            raise DatabaseServiceError(f"Failed to get connection status: {str(e)}")
 
     async def _validate_database_data(self, db: AsyncSession, data: DatabaseCreate, exclude_name: Optional[str] = None):
         """Validate database connection data."""
@@ -96,29 +288,73 @@ class DatabaseService:
     def _validate_url_format(self, url: str):
         """Validate database URL format."""
         if not url or not isinstance(url, str):
-            raise DatabaseServiceError("Database URL is required")
+            raise ValidationError(
+                message="Database URL is required",
+                user_message="Please provide a valid database connection URL.",
+                suggestions=["Enter a PostgreSQL connection URL in the format: postgresql://user:password@host:port/database"]
+            )
 
         try:
             parsed = urlparse(url)
 
             # Must be postgresql scheme
             if parsed.scheme not in ["postgresql", "postgres"]:
-                raise DatabaseServiceError("Only PostgreSQL databases are supported")
+                raise ConfigurationError(
+                    message="Only PostgreSQL databases are supported",
+                    user_message="This tool only supports PostgreSQL databases.",
+                    suggestions=[
+                        "Use a PostgreSQL database URL",
+                        "Ensure the URL starts with 'postgresql://' or 'postgres://'",
+                        "Contact support if you need to connect to other database types"
+                    ]
+                )
 
             # Must have hostname
             if not parsed.hostname:
-                raise DatabaseServiceError("Database URL must include a valid hostname")
+                raise ConfigurationError(
+                    message="Database URL must include a valid hostname",
+                    user_message="The database URL is missing a hostname.",
+                    suggestions=[
+                        "Include the database server hostname or IP address",
+                        "Example: postgresql://user:password@localhost:5432/database"
+                    ]
+                )
 
             # Must have database name
             if not parsed.path or parsed.path == '/':
-                raise DatabaseServiceError("Database URL must include a database name")
+                raise ConfigurationError(
+                    message="Database URL must include a database name",
+                    user_message="The database URL is missing a database name.",
+                    suggestions=[
+                        "Include the database name in the URL path",
+                        "Example: postgresql://user:password@host:5432/mydatabase"
+                    ]
+                )
 
             # Validate port if specified
             if parsed.port is not None and (parsed.port < 1 or parsed.port > 65535):
-                raise DatabaseServiceError("Database port must be between 1 and 65535")
+                raise ConfigurationError(
+                    message="Database port must be between 1 and 65535",
+                    user_message="The database port number is invalid.",
+                    suggestions=[
+                        "Use a valid port number (typically 5432 for PostgreSQL)",
+                        "Remove the port to use the default (5432)"
+                    ]
+                )
 
+        except DatabaseQueryError:
+            raise
         except Exception as e:
-            raise DatabaseServiceError(f"Invalid database URL format: {str(e)}")
+            raise ConfigurationError(
+                message=f"Invalid database URL format: {str(e)}",
+                user_message="The database URL format is invalid.",
+                suggestions=[
+                    "Use the format: postgresql://user:password@host:port/database",
+                    "Check for typos in the URL",
+                    "Ensure special characters are properly encoded"
+                ],
+                technical_details=str(e)
+            )
 
     async def _validate_name_uniqueness(self, db: AsyncSession, name: str, exclude_name: Optional[str] = None):
         """Validate that database name is unique."""
@@ -131,33 +367,58 @@ class DatabaseService:
         existing = result.scalar_one_or_none()
 
         if existing:
-            raise DatabaseServiceError(f"Database connection with name '{name}' already exists")
+            raise ValidationError(
+                message=f"Database connection with name '{name}' already exists",
+                user_message=f"A database connection named '{name}' already exists.",
+                suggestions=[
+                    "Choose a different name for your database connection",
+                    "Update the existing connection instead of creating a new one"
+                ]
+            )
 
     def _validate_name_format(self, name: str):
         """Validate database connection name format."""
         if not name or not isinstance(name, str):
-            raise DatabaseServiceError("Database name is required")
+            raise ValidationError(
+                message="Database name is required",
+                user_message="Please provide a name for the database connection.",
+                suggestions=["Enter a descriptive name for your database connection"]
+            )
 
         name = name.strip()
         if not name:
-            raise DatabaseServiceError("Database name cannot be empty")
+            raise ValidationError(
+                message="Database name cannot be empty",
+                user_message="The database name cannot be empty.",
+                suggestions=["Enter a non-empty name for your database connection"]
+            )
 
         # Name should only contain alphanumeric characters, hyphens, and underscores
         if not re.match(r'^[a-zA-Z0-9_-]+$', name):
-            raise DatabaseServiceError(
-                "Database name must contain only alphanumeric characters, hyphens, and underscores"
+            raise ValidationError(
+                message="Database name must contain only alphanumeric characters, hyphens, and underscores",
+                user_message="The database name contains invalid characters.",
+                suggestions=[
+                    "Use only letters, numbers, hyphens (-), and underscores (_)",
+                    "Remove spaces and special characters from the name"
+                ]
             )
 
         if len(name) > 50:
-            raise DatabaseServiceError("Database name cannot exceed 50 characters")
+            raise ValidationError(
+                message="Database name cannot exceed 50 characters",
+                user_message="The database name is too long.",
+                suggestions=["Use a shorter name (maximum 50 characters)"]
+            )
 
     async def _test_connection(self, url: str) -> Dict[str, Any]:
-        """Test database connection."""
+        """Test database connection with optimized performance."""
         try:
             self._validate_url_format(url)
 
             # Actually test the database connection
             import time
+            import asyncio
             start_time = time.time()
 
             # Parse URL and test connection
@@ -168,47 +429,76 @@ class DatabaseService:
             username = parsed.username
             password = parsed.password
 
-            # Test connection synchronously (since this is called from async context)
+            # Test connection with shorter timeout and run in thread pool to avoid blocking
             import psycopg2
-            conn = psycopg2.connect(
-                host=host,
-                port=port,
-                database=database,
-                user=username,
-                password=password,
-                connect_timeout=10  # 10 second timeout
-            )
-            conn.close()
-
-            latency_ms = int((time.time() - start_time) * 1000)
-
-            return {
-                "success": True,
-                "message": "Database connection successful",
-                "latency_ms": latency_ms
-            }
-        except psycopg2.OperationalError as e:
+            
+            def sync_test_connection():
+                """Synchronous connection test to run in thread pool."""
+                try:
+                    conn = psycopg2.connect(
+                        host=host,
+                        port=port,
+                        database=database,
+                        user=username,
+                        password=password,
+                        connect_timeout=3  # Reduced to 3 seconds for faster feedback
+                    )
+                    conn.close()
+                    return True, None
+                except Exception as e:
+                    return False, e
+            
+            # Run the connection test in a thread pool to avoid blocking the event loop
+            try:
+                loop = asyncio.get_event_loop()
+                success, error = await loop.run_in_executor(None, sync_test_connection)
+                
+                latency_ms = int((time.time() - start_time) * 1000)
+                
+                if success:
+                    return {
+                        "success": True,
+                        "message": "Database connection successful",
+                        "latency_ms": latency_ms
+                    }
+                else:
+                    # Handle the error
+                    if isinstance(error, psycopg2.OperationalError):
+                        categorized_error = categorize_psycopg2_error(error)
+                        return {
+                            "success": False,
+                            "message": categorized_error.user_message,
+                            "error": str(error),
+                            "error_info": categorized_error,
+                            "latency_ms": latency_ms
+                        }
+                    else:
+                        return {
+                            "success": False,
+                            "message": f"Connection failed: {str(error)}",
+                            "error": str(error),
+                            "latency_ms": latency_ms
+                        }
+                        
+            except asyncio.TimeoutError:
+                return {
+                    "success": False,
+                    "message": "Connection test timed out",
+                    "error": "Connection timeout after 3 seconds",
+                    "latency_ms": int((time.time() - start_time) * 1000)
+                }
+                
+        except DatabaseQueryError as e:
             return {
                 "success": False,
-                "message": f"Database connection failed: {str(e)}",
-                "error": str(e)
-            }
-        except DatabaseServiceError as e:
-            return {
-                "success": False,
-                "message": str(e),
-                "error": str(e)
+                "message": e.user_message,
+                "error": str(e),
+                "error_info": e
             }
         except Exception as e:
             return {
                 "success": False,
                 "message": f"Unexpected error during connection test: {str(e)}",
-                "error": str(e)
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "message": "Connection test failed",
                 "error": str(e)
             }
 
@@ -418,13 +708,21 @@ class DatabaseService:
         except Exception as e:
             raise DatabaseServiceError(f"Failed to extract database metadata: {str(e)}")
 
-    async def execute_query(self, db: AsyncSession, database_name: str, sql: str, max_rows: int = 1000) -> Dict[str, Any]:
-        """Execute a SQL query against the specified database."""
+    async def execute_query(self, db: AsyncSession, database_name: str, sql: str, max_rows: int = 1000, timeout_seconds: int = 30) -> Dict[str, Any]:
+        """Execute a SQL query against the specified database with timeout handling."""
         try:
             # Get the database connection
             database_conn = await self.get_database(db, database_name)
             if not database_conn:
-                raise DatabaseServiceError(f"Database '{database_name}' not found")
+                raise ConfigurationError(
+                    message=f"Database '{database_name}' not found",
+                    user_message=f"The database '{database_name}' was not found in your connections.",
+                    suggestions=[
+                        "Check that the database name is spelled correctly",
+                        "Verify the database connection exists",
+                        "Refresh the database list"
+                    ]
+                )
 
             # Parse database URL
             parsed = urlparse(database_conn.url)
@@ -437,48 +735,72 @@ class DatabaseService:
             import time
             start_time = time.time()
 
-            # Connect to PostgreSQL and execute query
-            conn = psycopg2.connect(
-                host=host,
-                port=port,
-                database=database,
-                user=username,
-                password=password
-            )
-
+            # Connect to PostgreSQL and execute query with timeout
             try:
-                cursor = conn.cursor()
+                conn = psycopg2.connect(
+                    host=host,
+                    port=port,
+                    database=database,
+                    user=username,
+                    password=password,
+                    connect_timeout=10  # Connection timeout
+                )
 
-                # Execute the query
-                cursor.execute(sql)
+                try:
+                    cursor = conn.cursor()
+                    
+                    # Set statement timeout for the query
+                    cursor.execute(f"SET statement_timeout = {timeout_seconds * 1000}")  # Convert to milliseconds
 
-                # Get column names
-                columns = [desc[0] for desc in cursor.description] if cursor.description else []
+                    # Execute the query
+                    cursor.execute(sql)
 
-                # Fetch all rows (with limit)
-                rows = cursor.fetchall()
-                truncated = len(rows) > max_rows
+                    # Get column names
+                    columns = [desc[0] for desc in cursor.description] if cursor.description else []
 
-                if truncated:
-                    rows = rows[:max_rows]
+                    # Fetch all rows (with limit)
+                    rows = cursor.fetchall()
+                    truncated = len(rows) > max_rows
 
-                # Convert rows to list of lists (JSON serializable)
-                rows = [list(row) for row in rows]
+                    if truncated:
+                        rows = rows[:max_rows]
 
-                execution_time_ms = int((time.time() - start_time) * 1000)
+                    # Convert rows to list of lists (JSON serializable)
+                    rows = [list(row) for row in rows]
 
-                return {
-                    "columns": columns,
-                    "rows": rows,
-                    "row_count": len(rows),
-                    "execution_time_ms": execution_time_ms,
-                    "truncated": truncated
-                }
+                    execution_time_ms = int((time.time() - start_time) * 1000)
 
-            finally:
-                conn.close()
+                    return {
+                        "columns": columns,
+                        "rows": rows,
+                        "row_count": len(rows),
+                        "execution_time_ms": execution_time_ms,
+                        "truncated": truncated
+                    }
 
-        except psycopg2.Error as e:
-            raise DatabaseServiceError(f"Database query failed: {str(e)}")
+                finally:
+                    conn.close()
+
+            except psycopg2.OperationalError as e:
+                error_msg = str(e).lower()
+                if 'timeout' in error_msg or 'canceling statement due to statement timeout' in error_msg:
+                    raise categorize_timeout_error("Query execution", timeout_seconds)
+                else:
+                    raise categorize_psycopg2_error(e)
+            
+            except psycopg2.Error as e:
+                raise categorize_psycopg2_error(e)
+
+        except DatabaseQueryError:
+            raise
         except Exception as e:
-            raise DatabaseServiceError(f"Query execution failed: {str(e)}")
+            raise DatabaseQueryError(
+                message=f"Query execution failed: {str(e)}",
+                user_message="An unexpected error occurred while executing your query.",
+                suggestions=[
+                    "Check your SQL syntax",
+                    "Verify the database connection is still active",
+                    "Try a simpler query to test the connection"
+                ],
+                technical_details=str(e)
+            )

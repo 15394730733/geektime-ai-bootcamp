@@ -79,9 +79,9 @@ def test_create_database(client, sample_database_data):
     assert data["data"]["url"] == sample_database_data["url"]
     assert data["data"]["description"] == sample_database_data["description"]
     assert "id" in data["data"]
-    assert "created_at" in data["data"]
-    assert "updated_at" in data["data"]
-    assert data["data"]["is_active"] is True
+    assert "createdAt" in data["data"]
+    assert "updatedAt" in data["data"]
+    assert data["data"]["isActive"] is True
 
 
 def test_get_databases_after_create(client, sample_database_data):

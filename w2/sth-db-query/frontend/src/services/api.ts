@@ -23,9 +23,9 @@ export interface DatabaseConnection {
   name: string;
   url: string;
   description?: string;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ColumnMetadata {
@@ -90,6 +90,26 @@ class APIClient {
     this.client.interceptors.response.use(
       (response) => response,
       (error) => {
+        // Extract structured error information if available
+        if (error.response?.data) {
+          const errorData = error.response.data;
+          
+          // If the response contains structured error information
+          if (errorData.error && typeof errorData.error === 'object') {
+            // Create a structured error with the backend error information
+            const structuredError = new Error(errorData.message || errorData.error.userMessage || 'Request failed');
+            (structuredError as any).errorInfo = errorData.error;
+            (structuredError as any).statusCode = error.response.status;
+            throw structuredError;
+          }
+          
+          // If it's a simple error message
+          if (errorData.message) {
+            throw new Error(errorData.message);
+          }
+        }
+
+        // Handle HTTP status codes
         if (error.response?.status === 400) {
           throw new Error(error.response.data?.message || 'Bad Request');
         }
@@ -99,6 +119,7 @@ class APIClient {
         if (error.response?.status === 500) {
           throw new Error('Internal server error');
         }
+        
         throw new Error(error.message || 'Network error');
       }
     );
@@ -126,7 +147,7 @@ class APIClient {
     return result;
   }
 
-  async createDatabase(data: Omit<DatabaseConnection, 'id' | 'created_at' | 'updated_at'>): Promise<DatabaseConnection> {
+  async createDatabase(data: Omit<DatabaseConnection, 'id' | 'createdAt' | 'updatedAt'>): Promise<DatabaseConnection> {
     const response = await this.client.put<APIResponse<DatabaseConnection>>(`/dbs/${data.name}`, data);
     if (!response.data.success) {
       throw new Error(response.data.message);
@@ -182,6 +203,33 @@ class APIClient {
       throw new Error(response.data.message);
     }
     return response.data.data!;
+  }
+
+  // Test database connection
+  async testDatabaseConnection(data: Omit<DatabaseConnection, 'id' | 'createdAt' | 'updatedAt' | 'isActive'>): Promise<{ success: boolean; message: string; latency_ms?: number }> {
+    // Set a timeout for the test connection request (5 seconds)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    try {
+      const response = await this.client.post<APIResponse<{ success: boolean; message: string; latency_ms?: number }>>(
+        '/dbs/test-connection', 
+        data,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+      
+      if (!response.data.success) {
+        throw new Error(response.data.message);
+      }
+      return response.data.data!;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Connection test timed out after 5 seconds');
+      }
+      throw error;
+    }
   }
 
   // Health check

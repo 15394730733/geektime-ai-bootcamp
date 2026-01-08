@@ -1,0 +1,168 @@
+/* Custom styles for the Database Query Tool */
+
+/* Responsive layout adjustments */
+@media (max-width: 1200px) {
+  .query-layout .ant-col:first-child {
+    margin-bottom: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .query-layout .ant-row {
+    flex-direction: column;
+  }
+  
+  .query-layout .ant-col {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: none !important;
+  }
+}
+
+/* Improve Monaco Editor container */
+.monaco-editor-container {
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Custom scrollbar for better UX */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Improve table styling */
+.ant-table-wrapper {
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading states */
+.loading-overlay {
+  position: relative;
+}
+
+.loading-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  z-index: 10;
+  border-radius: 6px;
+}
+
+/* Improve card styling */
+.ant-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.ant-card-head {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Database selection styling */
+.database-selector {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+/* Natural language input styling */
+.natural-language-input {
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #e8e8e8;
+}
+
+/* Metadata viewer improvements */
+.metadata-viewer {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.metadata-viewer .ant-tree {
+  background: transparent;
+}
+
+.metadata-viewer .ant-tree-node-content-wrapper {
+  border-radius: 4px;
+}
+
+.metadata-viewer .ant-tree-node-content-wrapper:hover {
+  background-color: #f5f5f5;
+}
+
+/* Query results improvements */
+.query-results {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.query-results .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+/* Error display improvements */
+.error-display {
+  border-radius: 6px;
+  border-left: 4px solid #ff4d4f;
+  background: #fff2f0;
+  padding: 12px 16px;
+  margin: 8px 0;
+}
+
+.error-display.warning {
+  border-left-color: #faad14;
+  background: #fffbe6;
+}
+
+.error-display.info {
+  border-left-color: #1890ff;
+  background: #e6f7ff;
+}
+
+/* Success states */
+.success-message {
+  border-radius: 6px;
+  border-left: 4px solid #52c41a;
+  background: #f6ffed;
+  padding: 12px 16px;
+  margin: 8px 0;
+  color: #389e0d;
+}
+
+/* Improve layout spacing */
+.page-container {
+  padding: 24px;
+  min-height: 100vh;
+  background: #f5f5f5;
+}
+
+.content-wrapper {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}

@@ -1,141 +1,237 @@
 /**
- * Database Connection Form Component
+ * DatabaseForm Component
  *
- * Form for creating and editing database connections
+ * Form for adding new database connections with validation
  */
 
-import React, { useEffect } from 'react';
-import { Form, Input, Button, Modal, message } from 'antd';
-import { useCreate, useUpdate } from '@refinedev/core';
+import React, { useState } from 'react';
+import { Form, Input, Button, Card, Typography, Space } from 'antd';
+import { DatabaseOutlined, SaveOutlined, ReloadOutlined } from '@ant-design/icons';
+import { CompactErrorDisplay } from './ErrorDisplay';
 
-interface DatabaseConnection {
-  id?: string;
+const { Title, Text } = Typography;
+const { TextArea } = Input;
+
+export interface DatabaseFormData {
   name: string;
   url: string;
   description?: string;
 }
 
-interface DatabaseFormProps {
-  visible: boolean;
-  onCancel: () => void;
-  onSuccess: () => void;
-  initialValues?: Partial<DatabaseConnection>;
-  mode: 'create' | 'edit';
+export interface DatabaseFormProps {
+  loading?: boolean;
+  error?: string | Error | null;
+  onSubmit: (data: DatabaseFormData) => void;
+  onTest?: (data: DatabaseFormData) => Promise<{ success: boolean; message: string; latency_ms?: number }>;
+  initialValues?: Partial<DatabaseFormData>;
+  submitButtonText?: string;
+  showTestConnection?: boolean;
 }
 
+const validatePostgreSQLUrl = (url: string): boolean => {
+  // Basic PostgreSQL URL validation
+  const postgresUrlPattern = /^postgresql:\/\/[^:]+:[^@]+@[^:]+:\d+\/[^\/]+$/;
+  return postgresUrlPattern.test(url);
+};
+
 export const DatabaseForm: React.FC<DatabaseFormProps> = ({
-  visible,
-  onCancel,
-  onSuccess,
+  loading = false,
+  error = null,
+  onSubmit,
+  onTest,
   initialValues,
-  mode
+  submitButtonText = 'Add Database',
+  showTestConnection = true,
 }) => {
   const [form] = Form.useForm();
-  const { mutate: create, isLoading: isCreating } = useCreate();
-  const { mutate: update, isLoading: isUpdating } = useUpdate();
+  const [testLoading, setTestLoading] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  useEffect(() => {
-    if (visible && initialValues) {
-      form.setFieldsValue(initialValues);
-    } else if (visible) {
-      form.resetFields();
-    }
-  }, [visible, initialValues, form]);
-
-  const handleSubmit = async (values: DatabaseConnection) => {
+  const handleSubmit = async (values: DatabaseFormData) => {
     try {
-      if (mode === 'create') {
-        await create({
-          resource: 'dbs',
-          values,
-        });
-        message.success('Database connection created successfully');
-      } else {
-        await update({
-          resource: 'dbs',
-          id: initialValues?.name || '',
-          values,
-        });
-        message.success('Database connection updated successfully');
+      await onSubmit(values);
+      // Reset form on successful submission
+      if (!initialValues) {
+        form.resetFields();
+        setTestResult(null);
       }
-      onSuccess();
-      form.resetFields();
-    } catch (error) {
-      message.error(`Failed to ${mode} database connection`);
+    } catch (err) {
+      // Error handling is done by parent component
     }
   };
 
-  const handleCancel = () => {
-    form.resetFields();
-    onCancel();
+  const handleTestConnection = async () => {
+    try {
+      const values = await form.validateFields();
+      setTestLoading(true);
+      setTestResult(null);
+      
+      if (onTest) {
+        const result = await onTest(values);
+        setTestResult({ 
+          success: true, 
+          message: result.message || 'Connection successful!' 
+        });
+      }
+    } catch (err: any) {
+      setTestResult({ 
+        success: false, 
+        message: err.message || 'Connection failed. Please check your credentials.' 
+      });
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
+  const validateDatabaseName = (_: any, value: string) => {
+    if (!value) {
+      return Promise.reject(new Error('Database name is required'));
+    }
+    if (value.length < 2) {
+      return Promise.reject(new Error('Database name must be at least 2 characters'));
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(value)) {
+      return Promise.reject(new Error('Database name can only contain letters, numbers, hyphens, and underscores'));
+    }
+    return Promise.resolve();
+  };
+
+  const validateDatabaseUrl = (_: any, value: string) => {
+    if (!value) {
+      return Promise.reject(new Error('Database URL is required'));
+    }
+    if (!validatePostgreSQLUrl(value)) {
+      return Promise.reject(new Error('Please enter a valid PostgreSQL URL (postgresql://user:password@host:port/database)'));
+    }
+    return Promise.resolve();
   };
 
   return (
-    <Modal
-      title={mode === 'create' ? 'Add Database Connection' : 'Edit Database Connection'}
-      open={visible}
-      onCancel={handleCancel}
-      footer={null}
-      width={600}
+    <Card
+      title={
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <DatabaseOutlined style={{ marginRight: 8, color: '#1890ff' }} />
+          <Title level={4} style={{ margin: 0 }}>
+            {initialValues ? 'Edit Database Connection' : 'Add New Database Connection'}
+          </Title>
+        </div>
+      }
+      style={{ width: '100%', maxWidth: 600 }}
     >
+      {error && (
+        <CompactErrorDisplay
+          error={error}
+          onDismiss={() => {
+            // Parent component should handle error clearing
+          }}
+        />
+      )}
+
+      {testResult && (
+        <CompactErrorDisplay
+          error={testResult.success ? 
+            { 
+              category: 'internal' as any, 
+              severity: 'low' as any, 
+              code: 'CONNECTION_SUCCESS', 
+              message: testResult.message, 
+              userMessage: testResult.message,
+              suggestions: []
+            } : 
+            testResult.message
+          }
+        />
+      )}
+
       <Form
         form={form}
         layout="vertical"
         onFinish={handleSubmit}
         initialValues={initialValues}
+        autoComplete="off"
       >
         <Form.Item
+          label="Database Name"
           name="name"
-          label="Connection Name"
-          rules={[
-            { required: true, message: 'Please enter a connection name' },
-            { pattern: /^[a-zA-Z0-9_-]+$/, message: 'Name can only contain letters, numbers, hyphens, and underscores' },
-            { min: 1, max: 50, message: 'Name must be between 1 and 50 characters' }
-          ]}
+          rules={[{ validator: validateDatabaseName }]}
+          extra="A unique identifier for this database connection"
         >
-          <Input placeholder="e.g., production_db, analytics_db" />
-        </Form.Item>
-
-        <Form.Item
-          name="url"
-          label="Database URL"
-          rules={[
-            { required: true, message: 'Please enter a database URL' },
-            {
-              pattern: /^postgresql:\/\/|^postgres:\/\//,
-              message: 'URL must be a valid PostgreSQL connection string'
-            }
-          ]}
-        >
-          <Input placeholder="postgresql://user:password@host:port/database" />
-        </Form.Item>
-
-        <Form.Item
-          name="description"
-          label="Description (Optional)"
-          rules={[
-            { max: 200, message: 'Description cannot exceed 200 characters' }
-          ]}
-        >
-          <Input.TextArea
-            placeholder="Brief description of this database connection"
-            rows={3}
+          <Input
+            placeholder="e.g., production-db, analytics-db"
+            disabled={loading}
           />
         </Form.Item>
 
-        <Form.Item style={{ textAlign: 'right', marginBottom: 0 }}>
-          <Button onClick={handleCancel} style={{ marginRight: 8 }}>
-            Cancel
-          </Button>
-          <Button
-            type="primary"
-            htmlType="submit"
-            loading={isCreating || isUpdating}
-          >
-            {mode === 'create' ? 'Create' : 'Update'}
-          </Button>
+        <Form.Item
+          label="Database URL"
+          name="url"
+          rules={[{ validator: validateDatabaseUrl }]}
+          extra="PostgreSQL connection string (postgresql://user:password@host:port/database)"
+        >
+          <Input
+            placeholder="postgresql://username:password@localhost:5432/database_name"
+            disabled={loading}
+          />
+        </Form.Item>
+
+        <Form.Item
+          label="Description"
+          name="description"
+          extra="Optional description to help identify this database"
+        >
+          <TextArea
+            rows={3}
+            placeholder="e.g., Production database for customer data"
+            disabled={loading}
+            maxLength={500}
+            showCount
+          />
+        </Form.Item>
+
+        <Form.Item style={{ marginBottom: 0 }}>
+          <Space>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={loading}
+              icon={<SaveOutlined />}
+            >
+              {submitButtonText}
+            </Button>
+
+            {showTestConnection && onTest && (
+              <Button
+                type="default"
+                onClick={handleTestConnection}
+                loading={testLoading}
+                icon={<ReloadOutlined />}
+              >
+                Test Connection
+              </Button>
+            )}
+
+            <Button
+              type="default"
+              onClick={() => {
+                form.resetFields();
+                setTestResult(null);
+              }}
+              disabled={loading}
+            >
+              Reset
+            </Button>
+          </Space>
         </Form.Item>
       </Form>
-    </Modal>
+
+      <div style={{ marginTop: 16, padding: '12px 16px', backgroundColor: '#f5f5f5', borderRadius: 6 }}>
+        <Text type="secondary" style={{ fontSize: '12px' }}>
+          <strong>Security Note:</strong> Database credentials are stored locally and used only for establishing connections. 
+          Ensure you have proper permissions and follow your organization's security policies.
+        </Text>
+      </div>
+    </Card>
   );
 };
+
+export default DatabaseForm;

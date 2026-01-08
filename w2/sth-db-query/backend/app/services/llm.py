@@ -1,8 +1,8 @@
 """
 LLM service integration for natural language to SQL conversion.
 
-This module provides integration with OpenAI-compatible APIs (GLM) for
-converting natural language queries to SQL statements.
+This module provides integration with OpenAI API for converting natural language 
+queries to SQL statements using database metadata as context.
 """
 
 import json
@@ -11,45 +11,71 @@ from openai import AsyncOpenAI
 import logging
 
 from ..core.config import settings
+from ..core.security import validate_and_sanitize_sql
+from ..core.errors import SQLSyntaxError, ValidationError, LLMServiceError, categorize_llm_error
 
 logger = logging.getLogger(__name__)
 
 
 class LLMService:
-    """Service for natural language to SQL conversion using LLM."""
+    """Service for natural language to SQL conversion using OpenAI API."""
 
     def __init__(self):
+        """Initialize the LLM service with OpenAI client configuration."""
+        if not settings.openai_api_key:
+            logger.warning("OpenAI API key not configured")
+            
         self.client = AsyncOpenAI(
-            api_key=settings.glm_api_key,
-            base_url=settings.glm_base_url,
+            api_key=settings.openai_api_key,
+            base_url=settings.openai_base_url,
         )
-        self.model = "glm-4"  # GLM-4 model for text generation
+        self.model = settings.openai_model
 
     async def generate_sql(
         self,
         natural_language_query: str,
-        database_schema: Dict[str, Any],
+        database_metadata: Dict[str, Any],
         max_tokens: int = 1000,
         temperature: float = 0.1
     ) -> str:
         """
-        Generate SQL from natural language query using database schema context.
+        Generate SQL from natural language query using database metadata context.
 
         Args:
             natural_language_query: User's natural language description
-            database_schema: Database metadata including tables and columns
+            database_metadata: Database metadata including tables and columns
             max_tokens: Maximum tokens for response
             temperature: Temperature for generation (lower = more deterministic)
 
         Returns:
-            Generated SQL query string
+            Generated and validated SQL query string
 
         Raises:
-            Exception: If SQL generation fails
+            LLMServiceError: If SQL generation fails due to API errors or invalid input
         """
+        if not settings.openai_api_key:
+            raise LLMServiceError(
+                message="OpenAI API key not configured",
+                user_message="The AI service is not properly configured. Please contact support.",
+                suggestions=[
+                    "Contact your administrator to configure the OpenAI API key",
+                    "Use direct SQL input as an alternative"
+                ]
+            )
+            
+        if not natural_language_query.strip():
+            raise ValidationError(
+                message="Natural language query cannot be empty",
+                user_message="Please enter a description of what you want to query.",
+                suggestions=[
+                    "Describe what data you want to retrieve",
+                    "Be specific about tables and conditions you're interested in"
+                ]
+            )
+            
         try:
-            # Build context from database schema
-            schema_context = self._build_schema_context(database_schema)
+            # Build context from database metadata
+            schema_context = self.build_metadata_context(database_metadata)
 
             # Create prompt for SQL generation
             prompt = self._create_sql_generation_prompt(
@@ -57,13 +83,13 @@ class LLMService:
                 schema_context
             )
 
-            # Call LLM API
+            # Call OpenAI API
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a SQL expert. Generate only the SQL query without any explanation or markdown formatting."
+                        "content": "You are a SQL expert. Generate only valid PostgreSQL SELECT queries without any explanation or markdown formatting. Use proper table and column names from the provided schema."
                     },
                     {
                         "role": "user",
@@ -80,56 +106,202 @@ class LLMService:
             # Clean up the response (remove markdown code blocks if present)
             generated_sql = self._clean_sql_response(generated_sql)
 
-            logger.info(f"Generated SQL for query: {natural_language_query[:50]}...")
+            # Validate the generated SQL using the SQL validator
+            validated_sql = self.validate_generated_sql(generated_sql)
 
-            return generated_sql
+            logger.info(f"Generated and validated SQL for query: {natural_language_query[:50]}...")
 
+            return validated_sql
+
+        except (SQLSyntaxError, ValidationError, LLMServiceError):
+            raise
         except Exception as e:
             logger.error(f"Failed to generate SQL: {e}")
-            raise Exception(f"SQL generation failed: {str(e)}")
+            raise categorize_llm_error(e, natural_language_query)
 
-    def _build_schema_context(self, database_schema: Dict[str, Any]) -> str:
+    def validate_generated_sql(self, generated_sql: str) -> str:
         """
-        Build schema context string from database metadata.
+        Validate LLM-generated SQL using the SQL validator.
 
         Args:
-            database_schema: Database schema information
+            generated_sql: SQL query generated by the LLM
+
+        Returns:
+            Validated and sanitized SQL query
+
+        Raises:
+            LLMServiceError: If validation fails
+        """
+        try:
+            # Use the SQL validator to validate and sanitize the generated SQL
+            validated_sql = validate_and_sanitize_sql(generated_sql)
+            return validated_sql
+            
+        except (SQLSyntaxError, ValidationError) as e:
+            # Re-raise validation errors with context about LLM generation
+            raise LLMServiceError(
+                message=f"Generated SQL validation failed: {e.message}",
+                user_message="The AI generated invalid SQL. Please try rephrasing your request.",
+                suggestions=[
+                    "Try rephrasing your question more clearly",
+                    "Be more specific about what data you want",
+                    "Use direct SQL input for complex queries"
+                ],
+                technical_details=f"Generated SQL: {generated_sql}, Validation error: {e.message}",
+                context={"generated_sql": generated_sql, "original_error": str(e)}
+            )
+        except Exception as e:
+            # Handle any other validation errors
+            raise LLMServiceError(
+                message=f"SQL validation error: {str(e)}",
+                user_message="Unable to validate the generated SQL. Please try again.",
+                technical_details=str(e),
+                context={"generated_sql": generated_sql}
+            )
+
+    async def generate_and_validate_sql(
+        self,
+        natural_language_query: str,
+        database_metadata: Dict[str, Any],
+        max_retries: int = 2
+    ) -> str:
+        """
+        Generate SQL with automatic validation and retry on validation failures.
+
+        Args:
+            natural_language_query: User's natural language description
+            database_metadata: Database metadata including tables and columns
+            max_retries: Maximum number of retries if validation fails
+
+        Returns:
+            Generated and validated SQL query string
+
+        Raises:
+            LLMServiceError: If SQL generation or validation fails after all retries
+        """
+        last_error = None
+        
+        for attempt in range(max_retries + 1):
+            try:
+                # Generate SQL
+                generated_sql = await self.generate_sql(
+                    natural_language_query, 
+                    database_metadata
+                )
+                
+                # If we get here, generation and validation succeeded
+                return generated_sql
+                
+            except (SQLSyntaxError, ValidationError, LLMServiceError) as e:
+                last_error = e
+                logger.warning(f"SQL generation attempt {attempt + 1} failed: {e}")
+                
+                # If this was the last attempt, raise the error
+                if attempt == max_retries:
+                    break
+                    
+                # For validation failures, we could modify the prompt for retry
+                # For now, just retry with the same parameters
+                continue
+            except Exception as e:
+                last_error = categorize_llm_error(e, natural_language_query)
+                logger.warning(f"SQL generation attempt {attempt + 1} failed: {e}")
+                
+                if attempt == max_retries:
+                    break
+                continue
+        
+        # If we get here, all attempts failed
+        if isinstance(last_error, LLMServiceError):
+            raise last_error
+        else:
+            raise LLMServiceError(
+                message=f"Failed to generate valid SQL after {max_retries + 1} attempts",
+                user_message="Unable to generate SQL from your request after multiple attempts. Please try rephrasing.",
+                suggestions=[
+                    "Try rephrasing your question more clearly",
+                    "Be more specific about what data you want",
+                    "Use direct SQL input for complex queries"
+                ],
+                technical_details=f"Last error: {last_error}",
+                context={"attempts": max_retries + 1, "query": natural_language_query}
+            )
+
+    def build_metadata_context(self, database_metadata: Dict[str, Any]) -> str:
+        """
+        Build database metadata context string for LLM prompts.
+
+        Args:
+            database_metadata: Database schema information
 
         Returns:
             Formatted schema context for LLM
         """
+        if not database_metadata:
+            return "No database schema available."
+            
         context_parts = []
 
-        # Add table information
-        if "tables" in database_schema:
-            context_parts.append("Tables:")
-            for table in database_schema["tables"]:
-                table_name = table.get("name", "")
-                schema_name = table.get("schema", "public")
-                columns = table.get("columns", [])
+        # Add database name if available
+        if "database_name" in database_metadata:
+            context_parts.append(f"Database: {database_metadata['database_name']}")
 
-                context_parts.append(f"  {schema_name}.{table_name}:")
-                for col in columns:
-                    col_info = f"    - {col['name']} ({col['data_type']})"
-                    if col.get("is_primary_key"):
-                        col_info += " [PRIMARY KEY]"
-                    if not col.get("is_nullable", True):
-                        col_info += " [NOT NULL]"
-                    context_parts.append(col_info)
+        # Add table information
+        if "tables" in database_metadata and database_metadata["tables"]:
+            context_parts.append("\nTables:")
+            tables = database_metadata["tables"]
+            # Handle both list and non-list tables entries
+            if isinstance(tables, list):
+                for table in tables:
+                    # Handle both dict and string table entries
+                    if isinstance(table, dict):
+                        table_name = table.get("name", "")
+                        schema_name = table.get("schema", "public")
+                        columns = table.get("columns", [])
+                    elif isinstance(table, str):
+                        # If table is a string, skip it or handle appropriately
+                        continue
+                    else:
+                        continue
+
+                    context_parts.append(f"  {schema_name}.{table_name}:")
+                    if isinstance(columns, list):
+                        for col in columns:
+                            if isinstance(col, dict):
+                                col_info = f"    - {col['name']} ({col['data_type']})"
+                                if col.get("is_primary_key"):
+                                    col_info += " [PRIMARY KEY]"
+                                if not col.get("is_nullable", True):
+                                    col_info += " [NOT NULL]"
+                                context_parts.append(col_info)
+            # If tables is not a list, skip it gracefully
 
         # Add view information
-        if "views" in database_schema:
+        if "views" in database_metadata and database_metadata["views"]:
             context_parts.append("\nViews:")
-            for view in database_schema["views"]:
-                view_name = view.get("name", "")
-                schema_name = view.get("schema", "public")
-                columns = view.get("columns", [])
+            views = database_metadata["views"]
+            # Handle both list and non-list views entries
+            if isinstance(views, list):
+                for view in views:
+                    if isinstance(view, dict):
+                        view_name = view.get("name", "")
+                        schema_name = view.get("schema", "public")
+                        columns = view.get("columns", [])
 
-                context_parts.append(f"  {schema_name}.{view_name}:")
-                for col in columns:
-                    context_parts.append(f"    - {col['name']} ({col['data_type']})")
+                        context_parts.append(f"  {schema_name}.{view_name}:")
+                        for col in columns:
+                            if isinstance(col, dict):
+                                context_parts.append(f"    - {col['name']} ({col['data_type']})")
+            # If views is not a list, skip it gracefully
 
-        return "\n".join(context_parts)
+        return "\n".join(context_parts) if context_parts else "No tables or views found."
+
+    def _build_schema_context(self, database_metadata: Dict[str, Any]) -> str:
+        """
+        Legacy method name for backward compatibility with tests.
+        Delegates to build_metadata_context.
+        """
+        return self.build_metadata_context(database_metadata)
 
     def _create_sql_generation_prompt(
         self,
@@ -147,7 +319,7 @@ class LLMService:
             Complete prompt for LLM
         """
         prompt = f"""
-Given the following database schema:
+Given the following PostgreSQL database schema:
 
 {schema_context}
 
@@ -156,12 +328,14 @@ Generate a PostgreSQL SELECT query for the following request:
 
 Important rules:
 - Only generate SELECT statements
-- Use proper table and column names from the schema
+- Use proper table and column names from the schema above
 - Include appropriate JOINs when needed
 - Use table aliases when joining multiple tables
-- Ensure the query is syntactically correct
+- Ensure the query is syntactically correct PostgreSQL
 - Do not include any explanation, just the SQL query
-- Use double quotes for identifiers if they contain special characters
+- Use double quotes for identifiers if they contain special characters or spaces
+- Reference only tables and columns that exist in the provided schema
+- Do not add LIMIT clause (it will be added automatically if needed)
 """
 
         return prompt.strip()
@@ -186,8 +360,10 @@ Important rules:
         if sql_response.endswith("```"):
             sql_response = sql_response[:-3]
 
-        # Clean up and return
-        return sql_response.strip()
+        # Remove any leading/trailing whitespace and semicolons
+        sql_response = sql_response.strip().rstrip(';')
+
+        return sql_response
 
 
 # Global LLM service instance

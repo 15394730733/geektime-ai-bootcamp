@@ -22,65 +22,69 @@ import "@refinedev/antd/dist/reset.css";
 
 import { DatabaseListPage } from "./pages/databases";
 import { QueryPage } from "./pages/Query";
+import { AppStateProvider } from "./contexts/AppStateContext";
+import { AppTitle } from "./components";
 
 function App() {
   return (
     <BrowserRouter>
       <RefineKbarProvider>
         <ColorModeContextProvider>
-          <AntdApp>
-            <Refine
-              dataProvider={dataProvider}
-              notificationProvider={useNotificationProvider}
-              routerProvider={routerBindings}
-              resources={[
-                {
-                  name: "databases",
-                  list: "/databases",
-                  meta: {
-                    label: "Databases",
-                    icon: "🏗️",
+          <AppStateProvider>
+            <AntdApp>
+              <Refine
+                dataProvider={dataProvider}
+                notificationProvider={useNotificationProvider}
+                routerProvider={routerBindings}
+                resources={[
+                  {
+                    name: "databases",
+                    list: "/databases",
+                    meta: {
+                      label: "Databases",
+                      icon: "🏗️",
+                    },
                   },
-                },
-                {
-                  name: "query",
-                  list: "/query",
-                  meta: {
-                    label: "Query",
-                    icon: "🔍",
+                  {
+                    name: "query",
+                    list: "/query",
+                    meta: {
+                      label: "Query",
+                      icon: "🔍",
+                    },
                   },
-                },
-              ]}
-              options={{
-                syncWithLocation: true,
-                warnWhenUnsavedChanges: true,
-                useNewQueryKeys: true,
-              }}
-            >
-              <Routes>
-                <Route
-                  element={
-                    <ThemedLayoutV2
-                      Sider={ThemedSiderV2}
-                      Title={ThemedTitleV2}
-                    >
-                      <Outlet />
-                    </ThemedLayoutV2>
-                  }
-                >
+                ]}
+                options={{
+                  syncWithLocation: true,
+                  warnWhenUnsavedChanges: true,
+                  useNewQueryKeys: true,
+                }}
+              >
+                <Routes>
                   <Route
-                    index
-                    element={<NavigateToResource resource="databases" />}
-                  />
-                  <Route path="/databases" element={<DatabaseListPage />} />
-                  <Route path="/query" element={<QueryPage />} />
-                  <Route path="*" element={<ErrorComponent />} />
-                </Route>
-              </Routes>
-              <RefineKbar />
-              <UnsavedChangesNotifier />
-            </Refine>
-          </AntdApp>
+                    element={
+                      <ThemedLayoutV2
+                        Sider={ThemedSiderV2}
+                        Title={AppTitle}
+                      >
+                        <Outlet />
+                      </ThemedLayoutV2>
+                    }
+                  >
+                    <Route
+                      index
+                      element={<NavigateToResource resource="databases" />}
+                    />
+                    <Route path="/databases" element={<DatabaseListPage />} />
+                    <Route path="/query" element={<QueryPage />} />
+                    <Route path="*" element={<ErrorComponent />} />
+                  </Route>
+                </Routes>
+                <RefineKbar />
+                <UnsavedChangesNotifier />
+              </Refine>
+            </AntdApp>
+          </AppStateProvider>
         </ColorModeContextProvider>
       </RefineKbarProvider>
     </BrowserRouter>

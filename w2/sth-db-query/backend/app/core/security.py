@@ -8,18 +8,10 @@ Ensures only SELECT statements are allowed and automatically adds LIMIT clauses.
 import re
 from typing import Optional, Tuple
 from sqlglot import parse_one, exp
-from sqlglot.errors import ParseError
+from sqlglot.errors import ParseError, TokenError
 
 from ..core.config import settings
-
-
-class SQLValidationError(Exception):
-    """Exception raised when SQL validation fails."""
-
-    def __init__(self, message: str, sql: str = ""):
-        self.message = message
-        self.sql = sql
-        super().__init__(f"{message}: {sql}")
+from ..core.errors import SQLSyntaxError, ValidationError, categorize_sql_error
 
 
 def validate_and_sanitize_sql(sql: str) -> str:
@@ -33,25 +25,39 @@ def validate_and_sanitize_sql(sql: str) -> str:
         Sanitized SQL query with LIMIT added if needed
 
     Raises:
-        SQLValidationError: If validation fails
+        SQLSyntaxError: If SQL syntax is invalid
+        ValidationError: If validation fails for security reasons
     """
     if not sql or not sql.strip():
-        raise SQLValidationError("SQL query cannot be empty")
+        raise ValidationError(
+            message="SQL query cannot be empty",
+            user_message="Please enter a SQL query to execute.",
+            suggestions=["Enter a valid SELECT statement"]
+        )
 
     sql = sql.strip()
 
     # Parse the SQL to validate syntax and structure
     try:
         parsed = parse_one(sql, dialect="postgres")
-    except ParseError as e:
-        raise SQLValidationError(f"Invalid SQL syntax: {str(e)}", sql)
+    except (ParseError, TokenError) as e:
+        raise categorize_sql_error(e, sql)
 
     # Check if it's a SELECT statement
     if not isinstance(parsed, exp.Select):
-        raise SQLValidationError("Only SELECT statements are allowed", sql)
+        raise ValidationError(
+            message="Only SELECT statements are allowed",
+            user_message="Only SELECT queries are permitted for security reasons.",
+            suggestions=[
+                "Use SELECT statements to query data",
+                "Remove any INSERT, UPDATE, DELETE, or DDL statements",
+                "Contact an administrator for data modification requests"
+            ],
+            context={"sql": sql, "statement_type": type(parsed).__name__}
+        )
 
     # Check for potentially dangerous operations
-    _check_for_dangerous_operations(parsed)
+    _check_for_dangerous_operations(parsed, sql)
 
     # Add LIMIT if not present and not already limited
     sql = _add_limit_if_needed(sql, parsed)
@@ -59,15 +65,16 @@ def validate_and_sanitize_sql(sql: str) -> str:
     return sql
 
 
-def _check_for_dangerous_operations(parsed_sql: exp.Expression) -> None:
+def _check_for_dangerous_operations(parsed_sql: exp.Expression, sql: str) -> None:
     """
     Check for potentially dangerous SQL operations.
 
     Args:
         parsed_sql: Parsed SQL expression
+        sql: Original SQL string
 
     Raises:
-        SQLValidationError: If dangerous operations are found
+        ValidationError: If dangerous operations are found
     """
     dangerous_keywords = [
         'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER',
@@ -78,7 +85,16 @@ def _check_for_dangerous_operations(parsed_sql: exp.Expression) -> None:
 
     for keyword in dangerous_keywords:
         if re.search(r'\b' + keyword + r'\b', sql_upper):
-            raise SQLValidationError(f"Statement contains forbidden keyword: {keyword}")
+            raise ValidationError(
+                message=f"Statement contains forbidden keyword: {keyword}",
+                user_message=f"The '{keyword}' operation is not allowed for security reasons.",
+                suggestions=[
+                    "Use SELECT statements to query data only",
+                    "Contact an administrator for data modification requests",
+                    "Remove any data modification or schema change operations"
+                ],
+                context={"sql": sql, "forbidden_keyword": keyword}
+            )
 
 
 def _add_limit_if_needed(sql: str, parsed_sql: exp.Select) -> str:

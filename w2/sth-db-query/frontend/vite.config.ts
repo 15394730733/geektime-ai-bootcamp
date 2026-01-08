@@ -12,4 +12,8 @@ export default defineConfig({
       },
     },
   },
+  define: {
+    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || 'http://localhost:8000/api/v1'),
+    'import.meta.env.VITE_DEBUG': JSON.stringify(process.env.VITE_DEBUG || 'true'),
+  },
 })

@@ -1,4 +1,5 @@
-@import './tailwind.css';
+/* 暂时禁用 Tailwind CSS 以测试 Ant Design Select 问题 */
+/* @import './tailwind.css'; */
 
 /* Global styles */
 body {
@@ -16,17 +17,26 @@ code {
     monospace;
 }
 
-/* Custom component styles */
+/* Custom component styles - 使用普通 CSS 替代 Tailwind */
 .query-editor {
-  @apply bg-white border border-gray-200 rounded-lg shadow-sm;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .query-results {
-  @apply bg-white border border-gray-200 rounded-lg shadow-sm;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .metadata-viewer {
-  @apply bg-white border border-gray-200 rounded-lg shadow-sm;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 /* Ant Design theme overrides */
@@ -35,28 +45,30 @@ code {
 }
 
 .ant-card {
-  @apply shadow-sm;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .ant-card-head {
-  @apply border-b border-gray-200;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .ant-table {
-  @apply shadow-sm;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .ant-table-thead > tr > th {
-  @apply bg-gray-50 font-medium;
+  background-color: #f9fafb;
+  font-weight: 500;
 }
 
 /* Monaco Editor integration */
 .monaco-editor {
-  @apply border border-gray-300 rounded;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
 }
 
 .monaco-editor .margin {
-  @apply bg-gray-50;
+  background-color: #f9fafb;
 }
 
 /* Utility classes */
@@ -65,5 +77,6 @@ code {
 }
 
 .bg-code {
-  @apply bg-gray-900 text-green-400;
+  background-color: #111827;
+  color: #34d399;
 }

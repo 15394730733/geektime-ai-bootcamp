@@ -19,16 +19,17 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    # GLM API Configuration
-    glm_api_key: str = ""
-    glm_base_url: str = "https://open.bigmodel.cn/api/paas/v4/"
+    # OpenAI API Configuration
+    openai_api_key: str = ""
+    openai_base_url: str = "https://api.openai.com/v1"
+    openai_model: str = "gpt-3.5-turbo"
 
     # Development Settings
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
 
-    # CORS Settings
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173", "http://localhost:5174", "http://localhost:5176"]
+    # CORS Settings - Allow all origins for development
+    CORS_ORIGINS: List[str] = ["*"]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

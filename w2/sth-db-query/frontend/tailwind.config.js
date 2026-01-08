@@ -24,6 +24,10 @@ export default {
     },
   },
   plugins: [],
+  // 禁用可能冲突的 preflight 样式
+  corePlugins: {
+    preflight: false,
+  },
   // Tailwind CSS v4 兼容性配置
   future: {
     hoverOnlyWhenSupported: true,
