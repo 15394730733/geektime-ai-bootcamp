@@ -4,8 +4,8 @@
  * Monaco-based SQL editor with syntax highlighting
  */
 
-import React, { useRef, useEffect } from 'react';
-import { Card, Button, Space } from 'antd';
+import React, { useRef } from 'react';
+import { Button, Space } from 'antd';
 import { PlayCircleOutlined, ClearOutlined } from '@ant-design/icons';
 import Editor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
@@ -23,12 +23,16 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
   onChange,
   onExecute,
   loading = false,
-  height = 300
+  height
 }) => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
+  console.log('QueryEditor rendering, value:', value, 'height:', height);
+
   const handleEditorDidMount = (editor: monaco.editor.IStandaloneCodeEditor) => {
     editorRef.current = editor;
+    
+    console.log('Monaco Editor mounted', editor);
     
     // Configure SQL language features
     monaco.languages.setLanguageConfiguration('sql', {
@@ -61,11 +65,15 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
       }
     });
 
-    // Focus the editor
-    editor.focus();
+    // Focus the editor after a short delay
+    setTimeout(() => {
+      editor.focus();
+      console.log('Editor focused, readOnly:', editor.getOption(monaco.editor.EditorOption.readOnly));
+    }, 100);
   };
 
   const handleEditorChange = (newValue: string | undefined) => {
+    console.log('Editor value changed:', newValue);
     onChange(newValue || '');
   };
 
@@ -76,10 +84,20 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
     }
   };
 
+  console.log('About to render Editor component');
+
   return (
-    <Card
-      title="SQL Query"
-      extra={
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Toolbar */}
+      <div style={{ 
+        padding: '12px 16px', 
+        borderBottom: '1px solid #d9d9d9',
+        background: '#fafafa',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <span style={{ fontWeight: 600, fontSize: '14px' }}>SQL Query</span>
         <Space>
           <Button
             icon={<ClearOutlined />}
@@ -95,18 +113,27 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
             loading={loading}
             size="small"
           >
-            Execute
+            Execute (Ctrl+Enter)
           </Button>
         </Space>
-      }
-    >
-      <div style={{ border: '1px solid #d9d9d9', borderRadius: '4px' }}>
+      </div>
+      
+      {/* Editor */}
+      <div style={{ 
+        flex: 1, 
+        minHeight: '300px', 
+        background: 'white',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+      }}>
         <Editor
-          height={height}
+          height="100%"
           language="sql"
           value={value}
           onChange={handleEditorChange}
           onMount={handleEditorDidMount}
+          loading="Loading editor..."
           options={{
             minimap: { enabled: false },
             scrollBeyondLastLine: false,
@@ -133,11 +160,13 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
               showKeywords: true,
               showSnippets: true,
               showFunctions: true
-            }
+            },
+            readOnly: false,
+            domReadOnly: false,
           }}
           theme="vs"
         />
       </div>
-    </Card>
+    </div>
   );
 };

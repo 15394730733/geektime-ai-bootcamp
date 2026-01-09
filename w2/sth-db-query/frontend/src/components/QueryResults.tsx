@@ -222,13 +222,13 @@ export const QueryResults: React.FC<QueryResultsProps> = ({
             pageSizeOptions: ['10', '25', '50', '100', '200'],
             defaultPageSize: 25,
           }}
-          rowClassName={(record, index) => 
+          rowClassName={(_record, index) => 
             index % 2 === 0 ? 'table-row-even' : 'table-row-odd'
           }
         />
       )}
       
-      <style jsx>{`
+      <style>{`
         .table-row-even {
           background-color: #fafafa;
         }

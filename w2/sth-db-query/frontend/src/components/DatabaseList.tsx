@@ -17,6 +17,7 @@ export interface DatabaseListProps {
   onEdit?: (database: DatabaseConnection) => void;
   onDelete?: (id: string) => void;
   onRefresh?: () => void;
+  onDatabaseClick?: (databaseName: string) => void;
 }
 
 const getStatusIcon = (isActive: boolean) => {
@@ -56,6 +57,7 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
   onEdit,
   onDelete,
   onRefresh,
+  onDatabaseClick,
 }) => {
   const databases = data || [];
   const renderDatabaseItem = (database: DatabaseConnection) => {
@@ -75,8 +77,10 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
             marginBottom: 8,
             border: '1px solid #d9d9d9',
             backgroundColor: 'white',
+            cursor: 'pointer',
           }}
           styles={{ body: { padding: '12px 16px' } }}
+          onClick={() => onDatabaseClick?.(database.name)}
           actions={[
             <Button
               key="edit"

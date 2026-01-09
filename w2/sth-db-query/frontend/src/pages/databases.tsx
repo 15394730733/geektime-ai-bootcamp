@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { List, CreateButton } from "@refinedev/antd";
 import { Modal, message } from "antd";
+import { useNavigate } from 'react-router-dom';
 import { DatabaseList, DatabaseFormModal } from '../components';
 import { useAppState } from '../contexts/AppStateContext';
 import { apiClient } from '../services/api';
 
 export const DatabaseListPage = () => {
   const { state, actions } = useAppState();
+  const navigate = useNavigate();
   const [formVisible, setFormVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<any>(undefined);
   const [formMode, setFormMode] = useState<'create' | 'edit'>('create');
@@ -52,6 +54,11 @@ export const DatabaseListPage = () => {
     }
   };
 
+  const handleDatabaseClick = (databaseName: string) => {
+    // Navigate to query page with database name as URL parameter
+    navigate(`/query?db=${encodeURIComponent(databaseName)}`);
+  };
+
   return (
     <div className="page-container">
       <div className="content-wrapper">
@@ -70,6 +77,7 @@ export const DatabaseListPage = () => {
               });
             }}
             onRefresh={actions.loadDatabases}
+            onDatabaseClick={handleDatabaseClick}
           />
 
           <DatabaseFormModal

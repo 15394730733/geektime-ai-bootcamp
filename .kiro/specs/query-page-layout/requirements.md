@@ -90,3 +90,14 @@
 1. WHEN the viewport width is less than 768px, THE Query_Page SHALL collapse the Metadata_Panel into a drawer
 2. THE Query_Page SHALL provide a toggle button to show/hide the Metadata_Panel on small screens
 3. THE Query_Page SHALL maintain minimum widths for both panels to ensure usability
+
+### Requirement 7: 简化导航流程
+
+**User Story:** As a database user, I want to directly access the query interface after selecting a database, so that I can start querying immediately without extra navigation steps.
+
+#### Acceptance Criteria
+
+1. THE Application SHALL NOT display a left sidebar navigation menu
+2. WHEN a user clicks on a database in the database list, THE Application SHALL navigate directly to the Query_Page with that database selected
+3. THE Query_Page SHALL be the primary interface after database selection
+4. THE Application SHALL provide a way to return to the database list from the Query_Page header

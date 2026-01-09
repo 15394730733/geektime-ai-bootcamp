@@ -1,0 +1,52 @@
+/**
+ * Styles for mobile metadata drawer and toggle
+ */
+
+.mobile-metadata-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  height: 28px;
+  padding: 0 8px;
+}
+
+.mobile-metadata-toggle .anticon {
+  font-size: 14px;
+}
+
+/* Responsive utilities */
+@media (min-width: 768px) {
+  .mobile-metadata-toggle {
+    display: none;
+  }
+}
+
+/* Mobile drawer customizations */
+.ant-drawer-content-wrapper {
+  max-width: 90vw;
+}
+
+.ant-drawer-body {
+  padding: 0;
+}
+
+/* Mobile layout adjustments */
+@media (max-width: 767px) {
+  .page-container {
+    padding: 8px;
+  }
+  
+  .content-wrapper {
+    gap: 12px;
+  }
+  
+  .database-selector {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .natural-language-input {
+    margin: 0;
+  }
+}

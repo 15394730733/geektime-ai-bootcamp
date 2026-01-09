@@ -1,11 +1,11 @@
 /**
- * MetadataViewer Component
+ * SchemaTree Component
  *
- * Displays database schema in expandable tree structure
+ * Displays database schema in expandable tree structure with search filtering
  */
 
 import React, { useMemo } from 'react';
-import { Tree, Card, Typography, Badge, Tooltip, Empty, Spin } from 'antd';
+import { Tree, Badge, Tooltip, Empty, Spin, Typography } from 'antd';
 import { 
   DatabaseOutlined, 
   TableOutlined, 
@@ -15,18 +15,20 @@ import {
   FieldNumberOutlined,
   FieldBinaryOutlined,
   FieldTimeOutlined,
-  QuestionCircleOutlined
+  QuestionCircleOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
 import { DatabaseMetadata, TableMetadata, ColumnMetadata } from '../services/api';
 
 const { Title, Text } = Typography;
 
-export interface MetadataViewerProps {
-  metadata?: DatabaseMetadata | null;
-  selectedDatabase?: string;
-  loading?: boolean;
-  onTableSelect?: (tableName: string, schema: string) => void;
-  onColumnSelect?: (columnName: string, tableName: string, schema: string) => void;
+export interface SchemaTreeProps {
+  metadata: DatabaseMetadata | null;
+  searchQuery: string;
+  loading: boolean;
+  databaseName: string | null;
+  onTableSelect: (schema: string, tableName: string) => void;
+  onColumnSelect: (schema: string, tableName: string, columnName: string) => void;
 }
 
 interface TreeNodeData {
@@ -134,29 +136,58 @@ const formatTableTitle = (table: TableMetadata, isView: boolean = false) => {
   );
 };
 
-export const MetadataViewer: React.FC<MetadataViewerProps> = ({
+// Helper function to check if an item matches the search query
+const matchesSearch = (text: string, searchQuery: string): boolean => {
+  if (!searchQuery.trim()) return true;
+  return text.toLowerCase().includes(searchQuery.toLowerCase());
+};
+
+// Helper function to filter tables and columns based on search
+const filterTablesBySearch = (tables: TableMetadata[], searchQuery: string): TableMetadata[] => {
+  if (!searchQuery.trim()) return tables;
+
+  return tables.filter(table => {
+    // Check if table name matches
+    if (matchesSearch(table.name, searchQuery)) return true;
+    
+    // Check if any column matches
+    return table.columns.some(column => matchesSearch(column.name, searchQuery));
+  }).map(table => ({
+    ...table,
+    columns: table.columns.filter(column => 
+      matchesSearch(table.name, searchQuery) || matchesSearch(column.name, searchQuery)
+    )
+  }));
+};
+
+export const SchemaTree: React.FC<SchemaTreeProps> = ({
   metadata,
-  selectedDatabase,
-  loading = false,
+  searchQuery,
+  loading,
+  databaseName,
   onTableSelect,
   onColumnSelect,
 }) => {
   const treeData = useMemo(() => {
     if (!metadata) return [];
 
+    // Filter tables and views based on search query
+    const filteredTables = filterTablesBySearch(metadata.tables, searchQuery);
+    const filteredViews = filterTablesBySearch(metadata.views, searchQuery);
+
     const nodes: TreeNodeData[] = [];
 
     // Group tables and views by schema
     const schemaGroups = new Map<string, { tables: TableMetadata[], views: TableMetadata[] }>();
     
-    metadata.tables.forEach(table => {
+    filteredTables.forEach(table => {
       if (!schemaGroups.has(table.schema)) {
         schemaGroups.set(table.schema, { tables: [], views: [] });
       }
       schemaGroups.get(table.schema)!.tables.push(table);
     });
 
-    metadata.views.forEach(view => {
+    filteredViews.forEach(view => {
       if (!schemaGroups.has(view.schema)) {
         schemaGroups.set(view.schema, { tables: [], views: [] });
       }
@@ -256,137 +287,96 @@ export const MetadataViewer: React.FC<MetadataViewerProps> = ({
     });
 
     return nodes;
-  }, [metadata]);
+  }, [metadata, searchQuery]);
 
   const handleSelect = (selectedKeys: React.Key[], info: any) => {
     const node = info.node as TreeNodeData;
     
     if (node.type === 'table' || node.type === 'view') {
-      onTableSelect?.(node.metadata!.tableName!, node.metadata!.schema!);
+      onTableSelect(node.metadata!.schema!, node.metadata!.tableName!);
     } else if (node.type === 'column') {
-      onColumnSelect?.(
-        node.metadata!.columnName!, 
+      onColumnSelect(
+        node.metadata!.schema!,
         node.metadata!.tableName!, 
-        node.metadata!.schema!
+        node.metadata!.columnName!
       );
     }
   };
 
   if (loading) {
     return (
-      <Card style={{ height: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
-          <Spin size="large" />
-        </div>
-      </Card>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+        <Spin size="large" />
+      </div>
     );
   }
 
-  if (!selectedDatabase) {
+  if (!databaseName) {
     return (
-      <Card style={{ height: '100%' }}>
-        <Empty
-          image={<DatabaseOutlined style={{ fontSize: '48px', color: '#d9d9d9' }} />}
-          description={
-            <div>
-              <Title level={4} type="secondary">
-                No Database Selected
-              </Title>
-              <Text type="secondary">
-                Select a database connection to view its schema
-              </Text>
-            </div>
-          }
-        />
-      </Card>
+      <Empty
+        image={<DatabaseOutlined style={{ fontSize: '48px', color: '#d9d9d9' }} />}
+        description={
+          <div>
+            <Title level={4} type="secondary">
+              No Database Selected
+            </Title>
+            <Text type="secondary">
+              Select a database connection to view its schema
+            </Text>
+          </div>
+        }
+      />
     );
   }
 
   if (!metadata || (metadata.tables.length === 0 && metadata.views.length === 0)) {
     return (
-      <Card 
-        title={
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <DatabaseOutlined style={{ marginRight: 8, color: '#1890ff' }} />
-            <Title level={4} style={{ margin: 0 }}>
-              {selectedDatabase} Schema
+      <Empty
+        image={<TableOutlined style={{ fontSize: '48px', color: '#d9d9d9' }} />}
+        description={
+          <div>
+            <Title level={4} type="secondary">
+              No Tables Found
             </Title>
+            <Text type="secondary">
+              This database appears to be empty or you may not have permission to view its schema
+            </Text>
           </div>
         }
-        style={{ height: '100%' }}
-      >
-        <Empty
-          image={<TableOutlined style={{ fontSize: '48px', color: '#d9d9d9' }} />}
-          description={
-            <div>
-              <Title level={4} type="secondary">
-                No Tables Found
-              </Title>
-              <Text type="secondary">
-                This database appears to be empty or you may not have permission to view its schema
-              </Text>
-            </div>
-          }
-        />
-      </Card>
+      />
+    );
+  }
+
+  // Show empty state when search returns no results
+  if (searchQuery.trim() && treeData.length === 0) {
+    return (
+      <Empty
+        image={<SearchOutlined style={{ fontSize: '48px', color: '#d9d9d9' }} />}
+        description={
+          <div>
+            <Title level={4} type="secondary">
+              No Results Found
+            </Title>
+            <Text type="secondary">
+              No tables or columns match "{searchQuery}"
+            </Text>
+          </div>
+        }
+      />
     );
   }
 
   return (
-    <Card 
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <DatabaseOutlined style={{ marginRight: 8, color: '#1890ff' }} />
-            <Title level={4} style={{ margin: 0 }}>
-              {selectedDatabase} Schema
-            </Title>
-          </div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <Badge count={metadata.tables.length} showZero>
-              <Text type="secondary">Tables</Text>
-            </Badge>
-            <Badge count={metadata.views.length} showZero>
-              <Text type="secondary">Views</Text>
-            </Badge>
-          </div>
-        </div>
-      }
+    <Tree
+      treeData={treeData}
+      defaultExpandAll={treeData.length <= 5 || searchQuery.trim() !== ''} // Auto-expand if few items or searching
+      showIcon={false}
+      onSelect={handleSelect}
       style={{ 
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column'
+        fontSize: '13px'
       }}
-      styles={{ 
-        body: { 
-          padding: '16px', 
-          flex: 1,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column'
-        } 
-      }}
-    >
-      <div 
-        style={{ 
-          flex: 1,
-          overflow: 'auto',
-          minHeight: 0
-        }}
-        className="custom-scrollbar-enhanced"
-      >
-        <Tree
-          treeData={treeData}
-          defaultExpandAll={treeData.length <= 5} // Auto-expand if few items
-          showIcon={false}
-          onSelect={handleSelect}
-          style={{ 
-            fontSize: '13px'
-          }}
-        />
-      </div>
-    </Card>
+    />
   );
 };
 
-export default MetadataViewer;
+export default SchemaTree;
