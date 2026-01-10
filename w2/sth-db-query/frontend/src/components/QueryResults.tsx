@@ -165,6 +165,8 @@ export const QueryResults: React.FC<QueryResultsProps> = ({
 
   return (
     <Card
+      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+      bodyStyle={{ flex: 1, overflow: 'auto', padding: '16px' }}
       title={
         <Space>
           Query Results
@@ -213,7 +215,7 @@ export const QueryResults: React.FC<QueryResultsProps> = ({
           dataSource={tableData}
           loading={loading}
           size="small"
-          scroll={{ x: true }}
+          scroll={{ x: true, y: 'calc(100vh - 400px)' }}
           pagination={{
             showSizeChanger: true,
             showQuickJumper: true,

@@ -125,7 +125,14 @@ export const QueryPanel: React.FC<QueryPanelProps> = ({
           </Panel>
 
           {/* Resize Handle */}
-          <PanelResizeHandle className="resize-handle resize-handle-vertical" />
+          <PanelResizeHandle 
+            className="resize-handle resize-handle-vertical"
+            style={{ 
+              background: '#e8e8e8',
+              borderTop: '1px solid #d9d9d9',
+              borderBottom: '1px solid #d9d9d9'
+            }}
+          />
 
           {/* Query Results Panel */}
           <Panel

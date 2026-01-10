@@ -49,7 +49,7 @@ export interface QueryPageState {
  */
 export const DEFAULT_LAYOUT_PREFERENCES: LayoutPreferences = {
   horizontalSplitSize: 20,
-  verticalSplitSize: 50,
+  verticalSplitSize: 30,  // Editor takes 30%, Results take 70%
   metadataPanelCollapsed: false,
 };
 
