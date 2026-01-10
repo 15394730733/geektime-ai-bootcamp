@@ -17,3 +17,7 @@
 ## apply_patch 工具集成
 如果我要把 apply_patch工具集成到我自己的项目中，我需要做哪些工作，如何做等等。如果需要，可以用 mermaid chart来辅助说明。
 写入 ./sth-specs/w4/codex-apply-patch-integration.md
+
+# open-notebook 架构分析
+仔细阅读./vendors/open-notebook 的代码，撰写一个详细的架构分析文档，有如需图表，使用mermaid chart。文档放在:
+./sth-specs/w4/open-notebook/arch-design.md
