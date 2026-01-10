@@ -22,6 +22,11 @@ export const TabBar: React.FC<TabBarProps> = ({
   onTabCreate,
   onTabClose,
 }) => {
+  // Debug: Log when databaseName changes
+  React.useEffect(() => {
+    console.log('TabBar: databaseName changed to:', databaseName);
+  }, [databaseName]);
+  
   const handleTabEdit = (
     targetKey: React.MouseEvent | React.KeyboardEvent | string,
     action: 'add' | 'remove'

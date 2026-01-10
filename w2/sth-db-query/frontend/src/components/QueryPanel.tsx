@@ -28,6 +28,7 @@ interface QueryPanelProps {
   onQueryChange: (tabId: string, query: string) => void;
   onExecute: (tabId: string) => void;
   onVerticalSplitChange: (size: number) => void;
+  onNaturalLanguageQuery?: (prompt: string) => Promise<void>;
 }
 
 export const QueryPanel: React.FC<QueryPanelProps> = ({
@@ -42,7 +43,13 @@ export const QueryPanel: React.FC<QueryPanelProps> = ({
   onQueryChange,
   onExecute,
   onVerticalSplitChange,
+  onNaturalLanguageQuery,
 }) => {
+  // Debug: Log when databaseName prop changes
+  React.useEffect(() => {
+    console.log('QueryPanel: databaseName prop changed to:', databaseName);
+  }, [databaseName]);
+  
   // Validate tab state on mount and when tabs change
   useEffect(() => {
     const validation = validateTabState(tabs, activeTabId);
@@ -111,6 +118,7 @@ export const QueryPanel: React.FC<QueryPanelProps> = ({
                   onExecute={handleExecute}
                   loading={loading}
                   height={undefined}
+                  onNaturalLanguageQuery={onNaturalLanguageQuery}
                 />
               </div>
             </div>

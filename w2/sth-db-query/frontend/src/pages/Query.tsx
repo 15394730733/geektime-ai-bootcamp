@@ -12,15 +12,14 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import { MetadataPanel } from '../components/MetadataPanel';
 import { QueryPanel } from '../components/QueryPanel';
-import { NaturalLanguageInput } from '../components/NaturalLanguageInput';
 import { MobileMetadataDrawer, MobileMetadataToggle } from '../components/MobileMetadataDrawer';
+import { DatabaseSelectorDebug } from '../components/DatabaseSelectorDebug';
 import { apiClient } from '../services/api';
 import { useAppState } from '../contexts/AppStateContext';
 import { QueryTab, QueryResult, LayoutPreferences } from '../types/layout';
 import { loadLayoutPreferences, saveLayoutPreferences, calculateSafePanelSizes } from '../utils/layout';
 import { createNewTab } from '../utils/tabManager';
 import { useResponsive } from '../hooks/useResponsive';
-import type { NaturalLanguageQueryResult } from '../services/api';
 import '../styles/MobileMetadata.css';
 import '../styles/ResizeHandles.css';
 import '../styles/LayoutEnhancements.css';
@@ -33,6 +32,17 @@ export const QueryPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { screenWidth, layoutMode } = useResponsive();
+  
+  // Force re-render when selectedDatabase changes
+  const [selectKey, setSelectKey] = React.useState(0);
+  
+  React.useEffect(() => {
+    console.log('Query Page: selectedDatabase changed to:', state.selectedDatabase);
+    setSelectKey(prev => prev + 1);
+  }, [state.selectedDatabase]);
+  
+  // Debug: Log on every render
+  console.log('Query Page rendering with state.selectedDatabase:', state.selectedDatabase);
   
   // Check if screen can accommodate both panels with minimum widths
   const canShowSplitLayout = layoutMode === 'desktop';
@@ -62,17 +72,23 @@ export const QueryPage: React.FC = () => {
   // Filter active databases
   const activeDatabases = state.databases.filter(db => db.isActive);
 
-  // Auto-select database from URL parameter
+  // Auto-select database from URL parameter (only on mount or when URL changes)
   useEffect(() => {
     const dbParam = searchParams.get('db');
-    if (dbParam && dbParam !== state.selectedDatabase) {
-      // Check if the database exists in the list
+    console.log('URL param useEffect triggered. dbParam:', dbParam, 'current:', state.selectedDatabase);
+    
+    // Only auto-select if:
+    // 1. There's a db parameter in URL
+    // 2. No database is currently selected (initial load)
+    // 3. The database exists in the list
+    if (dbParam && !state.selectedDatabase) {
       const dbExists = activeDatabases.some(db => db.name === dbParam);
       if (dbExists) {
+        console.log('Auto-selecting database from URL:', dbParam);
         actions.selectDatabase(dbParam);
       }
     }
-  }, [searchParams, activeDatabases, state.selectedDatabase, actions]);
+  }, [searchParams, activeDatabases]); // Removed state.selectedDatabase from dependencies!
 
   // Save layout preferences when they change
   useEffect(() => {
@@ -183,7 +199,7 @@ export const QueryPage: React.FC = () => {
     }
   }, [state.selectedDatabase, tabs]);
 
-  const handleNaturalLanguageQuery = async (prompt: string): Promise<NaturalLanguageQueryResult> => {
+  const handleNaturalLanguageQuery = async (prompt: string): Promise<void> => {
     if (!state.selectedDatabase) {
       message.warning('Please select a database first');
       throw new Error('No database selected');
@@ -209,11 +225,8 @@ export const QueryPage: React.FC = () => {
       ));
       
       message.success(`Natural language query converted and executed (${result.execution_time_ms}ms)`);
-      
-      return result;
     } catch (error: any) {
       message.error(error.message || 'Natural language query failed');
-      // Re-throw to maintain the expected return type
       throw error;
     } finally {
       setLoading(false);
@@ -267,9 +280,12 @@ export const QueryPage: React.FC = () => {
 
   return (
     <div className="page-container">
+      {/* Debug Component - Remove after fixing */}
+      <DatabaseSelectorDebug />
+      
       <div className="content-wrapper">
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {/* Header with Back Button */}
+          {/* Header with Back Button and Database Selector */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <Button
@@ -285,18 +301,34 @@ export const QueryPage: React.FC = () => {
                 Query Tool
               </Typography.Title>
             </div>
-          </div>
-
-          {/* Database Selection */}
-          <div className="database-selector-enhanced">
+            
+            {/* Database Selection moved to header */}
             <Space>
               <span style={{ fontWeight: 500 }}>Current Database:</span>
               <Select
+                key={selectKey}
                 style={{ minWidth: 250 }}
                 placeholder="Choose a database"
-                value={state.selectedDatabase || undefined}
-                onChange={actions.selectDatabase}
-                loading={state.loading.databases}
+                value={state.selectedDatabase}
+                onChange={(value) => {
+                  console.log('=== Select onChange triggered ===');
+                  console.log('Value:', value);
+                  console.log('Type:', typeof value);
+                  console.log('Current state.selectedDatabase:', state.selectedDatabase);
+                  
+                  // Force immediate update by calling with the value
+                  if (value && value !== state.selectedDatabase) {
+                    actions.selectDatabase(value);
+                  }
+                }}
+                loading={state.loading.databases || state.switchingDatabase}
+                disabled={state.switchingDatabase}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  (option?.children?.toString() ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+                notFoundContent="No databases available"
               >
                 {activeDatabases.map(db => (
                   <Select.Option key={db.name} value={db.name}>
@@ -305,19 +337,14 @@ export const QueryPage: React.FC = () => {
                   </Select.Option>
                 ))}
               </Select>
+              {/* Debug: Show raw state value */}
+              <span style={{ fontSize: '11px', color: '#999', marginLeft: '8px' }}>
+                (State: {state.selectedDatabase || 'null'})
+              </span>
             </Space>
           </div>
 
-          {/* Natural Language Input */}
-          {state.selectedDatabase && (
-            <div className="natural-language-enhanced">
-              <NaturalLanguageInput
-                onSubmit={handleNaturalLanguageQuery}
-                onExecuteSQL={handleExecuteSQL}
-                loading={loading}
-              />
-            </div>
-          )}
+          {/* Natural Language Input - Removed from here, now integrated in QueryEditor */}
 
           {/* Layout constraint warning */}
           {layoutMode === 'constrained' && (
@@ -369,6 +396,7 @@ export const QueryPage: React.FC = () => {
                     onQueryChange={handleQueryChange}
                     onExecute={handleExecuteQuery}
                     onVerticalSplitChange={handleVerticalResize}
+                    onNaturalLanguageQuery={handleNaturalLanguageQuery}
                   />
                 </div>
 
@@ -427,6 +455,7 @@ export const QueryPage: React.FC = () => {
                     onQueryChange={handleQueryChange}
                     onExecute={handleExecuteQuery}
                     onVerticalSplitChange={handleVerticalResize}
+                    onNaturalLanguageQuery={handleNaturalLanguageQuery}
                   />
                 </Panel>
               </PanelGroup>

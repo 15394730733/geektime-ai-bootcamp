@@ -18,6 +18,7 @@ interface AppState {
     databases: boolean;
     metadata: boolean;
   };
+  switchingDatabase: boolean;
   error: string | null;
 }
 
@@ -30,7 +31,9 @@ type AppAction =
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'ADD_DATABASE'; payload: DatabaseConnection }
   | { type: 'UPDATE_DATABASE'; payload: DatabaseConnection }
-  | { type: 'REMOVE_DATABASE'; payload: string };
+  | { type: 'REMOVE_DATABASE'; payload: string }
+  | { type: 'START_DATABASE_SWITCH' }
+  | { type: 'COMPLETE_DATABASE_SWITCH' };
 
 // Initial state
 const initialState: AppState = {
@@ -41,6 +44,7 @@ const initialState: AppState = {
     databases: false,
     metadata: false,
   },
+  switchingDatabase: false,
   error: null,
 };
 
@@ -61,6 +65,11 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         databases: action.payload,
       };
     case 'SET_SELECTED_DATABASE':
+      console.log('Reducer: SET_SELECTED_DATABASE', {
+        oldValue: state.selectedDatabase,
+        newValue: action.payload,
+        willClearMetadata: action.payload !== state.selectedDatabase
+      });
       return {
         ...state,
         selectedDatabase: action.payload,
@@ -96,6 +105,16 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
         // Clear selection if the removed database was selected
         selectedDatabase: state.selectedDatabase === action.payload ? null : state.selectedDatabase,
         metadata: state.selectedDatabase === action.payload ? null : state.metadata,
+      };
+    case 'START_DATABASE_SWITCH':
+      return {
+        ...state,
+        switchingDatabase: true,
+      };
+    case 'COMPLETE_DATABASE_SWITCH':
+      return {
+        ...state,
+        switchingDatabase: false,
       };
     default:
       return state;
@@ -156,13 +175,16 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
   };
 
   const loadMetadata = async (databaseName: string) => {
+    console.log('Loading metadata for database:', databaseName);
     dispatch({ type: 'SET_LOADING', payload: { key: 'metadata', value: true } });
     
     try {
       const metadata = await apiClient.getDatabaseMetadata(databaseName);
+      console.log('Metadata loaded successfully:', metadata);
       dispatch({ type: 'SET_METADATA', payload: metadata });
     } catch (error: any) {
       const errorMessage = error.message || 'Failed to load database metadata';
+      console.error('Failed to load metadata:', error);
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
       message.error(errorMessage);
       dispatch({ type: 'SET_METADATA', payload: null });
@@ -172,7 +194,32 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
   };
 
   const selectDatabase = async (databaseName: string | null) => {
+    console.log('=== selectDatabase called ===');
+    console.log('New database:', databaseName);
+    console.log('Current database:', state.selectedDatabase);
+    console.log('Are they equal?', databaseName === state.selectedDatabase);
+    
+    // Don't do anything if selecting the same database
+    if (databaseName === state.selectedDatabase) {
+      console.log('Database already selected, skipping');
+      return;
+    }
+    
+    console.log('Dispatching START_DATABASE_SWITCH');
+    dispatch({ type: 'START_DATABASE_SWITCH' });
+    
+    console.log('Dispatching SET_SELECTED_DATABASE with:', databaseName);
     dispatch({ type: 'SET_SELECTED_DATABASE', payload: databaseName });
+    
+    // Wait for metadata to load (handled by useEffect)
+    // We'll complete the switch after a short delay to ensure useEffect has triggered
+    setTimeout(() => {
+      console.log('Dispatching COMPLETE_DATABASE_SWITCH');
+      dispatch({ type: 'COMPLETE_DATABASE_SWITCH' });
+      if (databaseName) {
+        message.success(`Switched to database: ${databaseName}`);
+      }
+    }, 100);
   };
 
   const addDatabase = (database: DatabaseConnection) => {

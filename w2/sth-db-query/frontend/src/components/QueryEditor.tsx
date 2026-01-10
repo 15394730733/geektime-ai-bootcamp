@@ -4,9 +4,9 @@
  * Monaco-based SQL editor with syntax highlighting
  */
 
-import React, { useRef } from 'react';
-import { Button, Space } from 'antd';
-import { PlayCircleOutlined, ClearOutlined } from '@ant-design/icons';
+import React, { useRef, useState } from 'react';
+import { Button, Space, Segmented } from 'antd';
+import { PlayCircleOutlined, ClearOutlined, CodeOutlined, MessageOutlined } from '@ant-design/icons';
 import Editor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 
@@ -16,16 +16,22 @@ interface QueryEditorProps {
   onExecute: () => void;
   loading?: boolean;
   height?: number;
+  onNaturalLanguageQuery?: (prompt: string) => Promise<void>;
 }
+
+type QueryMode = 'sql' | 'natural';
 
 export const QueryEditor: React.FC<QueryEditorProps> = ({
   value,
   onChange,
   onExecute,
   loading = false,
-  height
+  height,
+  onNaturalLanguageQuery,
 }) => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const [queryMode, setQueryMode] = useState<QueryMode>('sql');
+  const [naturalLanguageInput, setNaturalLanguageInput] = useState('');
 
   console.log('QueryEditor rendering, value:', value, 'height:', height);
 
@@ -78,9 +84,25 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
   };
 
   const handleClear = () => {
-    onChange('');
-    if (editorRef.current) {
-      editorRef.current.focus();
+    if (queryMode === 'sql') {
+      onChange('');
+      if (editorRef.current) {
+        editorRef.current.focus();
+      }
+    } else {
+      setNaturalLanguageInput('');
+    }
+  };
+
+  const handleNaturalLanguageSubmit = async () => {
+    if (!naturalLanguageInput.trim() || !onNaturalLanguageQuery) return;
+    
+    try {
+      await onNaturalLanguageQuery(naturalLanguageInput);
+      // After successful conversion, switch to SQL mode to show the generated SQL
+      setQueryMode('sql');
+    } catch (error) {
+      console.error('Natural language query failed:', error);
     }
   };
 
@@ -97,7 +119,25 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <span style={{ fontWeight: 600, fontSize: '14px' }}>SQL Query</span>
+        <Space>
+          <span style={{ fontWeight: 600, fontSize: '14px' }}>Query</span>
+          <Segmented
+            value={queryMode}
+            onChange={(value) => setQueryMode(value as QueryMode)}
+            options={[
+              {
+                label: 'SQL',
+                value: 'sql',
+                icon: <CodeOutlined />,
+              },
+              {
+                label: 'Natural Language',
+                value: 'natural',
+                icon: <MessageOutlined />,
+              },
+            ]}
+          />
+        </Space>
         <Space>
           <Button
             icon={<ClearOutlined />}
@@ -109,16 +149,16 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
           <Button
             type="primary"
             icon={<PlayCircleOutlined />}
-            onClick={onExecute}
+            onClick={queryMode === 'sql' ? onExecute : handleNaturalLanguageSubmit}
             loading={loading}
             size="small"
           >
-            Execute (Ctrl+Enter)
+            {queryMode === 'sql' ? 'Execute (Ctrl+Enter)' : 'Convert & Execute'}
           </Button>
         </Space>
       </div>
       
-      {/* Editor */}
+      {/* Editor or Natural Language Input */}
       <div style={{ 
         flex: 1, 
         minHeight: '300px', 
@@ -127,45 +167,77 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
         flexDirection: 'column',
         overflow: 'hidden'
       }}>
-        <Editor
-          height="100%"
-          language="sql"
-          value={value}
-          onChange={handleEditorChange}
-          onMount={handleEditorDidMount}
-          loading="Loading editor..."
-          options={{
-            minimap: { enabled: false },
-            scrollBeyondLastLine: false,
-            fontSize: 14,
-            fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
-            lineNumbers: 'on',
-            roundedSelection: false,
-            scrollbar: {
-              vertical: 'auto',
-              horizontal: 'auto'
-            },
-            automaticLayout: true,
-            wordWrap: 'on',
-            tabSize: 2,
-            insertSpaces: true,
-            folding: true,
-            foldingStrategy: 'indentation',
-            showFoldingControls: 'always',
-            matchBrackets: 'always',
-            autoIndent: 'full',
-            formatOnPaste: true,
-            formatOnType: true,
-            suggest: {
-              showKeywords: true,
-              showSnippets: true,
-              showFunctions: true
-            },
-            readOnly: false,
-            domReadOnly: false,
-          }}
-          theme="vs"
-        />
+        {queryMode === 'sql' ? (
+          <Editor
+            height="100%"
+            language="sql"
+            value={value}
+            onChange={handleEditorChange}
+            onMount={handleEditorDidMount}
+            loading="Loading editor..."
+            options={{
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              fontSize: 14,
+              fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
+              lineNumbers: 'on',
+              roundedSelection: false,
+              scrollbar: {
+                vertical: 'auto',
+                horizontal: 'auto'
+              },
+              automaticLayout: true,
+              wordWrap: 'on',
+              tabSize: 2,
+              insertSpaces: true,
+              folding: true,
+              foldingStrategy: 'indentation',
+              showFoldingControls: 'always',
+              matchBrackets: 'always',
+              autoIndent: 'full',
+              formatOnPaste: true,
+              formatOnType: true,
+              suggest: {
+                showKeywords: true,
+                showSnippets: true,
+                showFunctions: true
+              },
+              readOnly: false,
+              domReadOnly: false,
+            }}
+            theme="vs"
+          />
+        ) : (
+          <div style={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <textarea
+              value={naturalLanguageInput}
+              onChange={(e) => setNaturalLanguageInput(e.target.value)}
+              placeholder="Describe what data you want to see... (e.g., 'Show me all users who registered in the last 7 days')"
+              style={{
+                flex: 1,
+                width: '100%',
+                padding: '12px',
+                fontSize: '14px',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                border: '1px solid #d9d9d9',
+                borderRadius: '4px',
+                resize: 'none',
+                outline: 'none',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#1890ff';
+                e.target.style.boxShadow = '0 0 0 2px rgba(24, 144, 255, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#d9d9d9';
+                e.target.style.boxShadow = 'none';
+              }}
+            />
+            <div style={{ marginTop: '8px', fontSize: '12px', color: '#8c8c8c' }}>
+              💡 Tip: Describe your query in plain English, and we'll convert it to SQL for you.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
