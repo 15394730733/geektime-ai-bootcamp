@@ -13,6 +13,10 @@
 .metadata-panel-container {
   background: linear-gradient(135deg, #fafbfc 0%, #f8f9fa 100%);
   border-right: 1px solid #e8e8e8;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .metadata-panel-container .ant-card {
@@ -76,6 +80,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
+  max-height: 100%;
 }
 
 .schema-tree-container .ant-tree {

@@ -279,7 +279,7 @@ export const QueryPage: React.FC = () => {
   }, [state.selectedDatabase, activeTabId, handleExecuteQuery]);
 
   return (
-    <div className="page-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="page-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Debug Component - Hidden */}
       {/* <DatabaseSelectorDebug /> */}
       
@@ -357,7 +357,7 @@ export const QueryPage: React.FC = () => {
           )}
 
           {/* Main Layout: Responsive Split - Full height */}
-          <div style={{ flex: 1, width: '100%', minHeight: 0 }}>
+          <div style={{ flex: 1, width: '100%', minHeight: 0, overflow: 'hidden' }}>
             {!canShowSplitLayout ? (
               // Mobile Layout: Full-width query panel with drawer
               <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -411,21 +411,24 @@ export const QueryPage: React.FC = () => {
               <PanelGroup
                 direction="horizontal"
                 onLayout={handleHorizontalResize}
+                style={{ height: '100%', display: 'flex' }}
               >
                 {/* Left Panel - Metadata */}
                 <Panel
                   defaultSize={layoutPreferences.horizontalSplitSize}
                   minSize={Math.max(15, (200 / screenWidth) * 100)} // Ensure 200px minimum
                   maxSize={Math.min(50, ((screenWidth - 400) / screenWidth) * 100)} // Ensure 400px minimum for right panel
-                  style={{ minWidth: '200px' }}
+                  style={{ minWidth: '200px', height: '100%' }}
                 >
-                  <MetadataPanel
-                    databaseName={state.selectedDatabase}
-                    metadata={state.metadata}
-                    loading={state.loading.metadata}
-                    onTableClick={handleTableClick}
-                    onColumnClick={handleColumnClick}
-                  />
+                  <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    <MetadataPanel
+                      databaseName={state.selectedDatabase}
+                      metadata={state.metadata}
+                      loading={state.loading.metadata}
+                      onTableClick={handleTableClick}
+                      onColumnClick={handleColumnClick}
+                    />
+                  </div>
                 </Panel>
 
                 {/* Resize Handle */}

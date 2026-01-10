@@ -35,7 +35,7 @@ export const MetadataPanel: React.FC<MetadataPanelProps> = ({
   };
 
   return (
-    <div className="metadata-panel-container">
+    <div className="metadata-panel-container" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Card 
         title={
           <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -45,18 +45,17 @@ export const MetadataPanel: React.FC<MetadataPanelProps> = ({
             </Title>
           </div>
         }
-        style={{ height: '100%', display: 'flex', flexDirection: 'column', border: 'none' }}
-        styles={{ 
-          body: { 
-            padding: '16px', 
-            flex: 1, 
-            display: 'flex', 
-            flexDirection: 'column'
-          } 
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', border: 'none', overflow: 'hidden' }}
+        bodyStyle={{ 
+          padding: '16px', 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column',
+          overflow: 'hidden'
         }}
       >
         {/* Search Input */}
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16, flexShrink: 0 }}>
           <Input
             placeholder="Search tables and columns..."
             prefix={<SearchOutlined />}
@@ -68,7 +67,7 @@ export const MetadataPanel: React.FC<MetadataPanelProps> = ({
         </div>
 
         {/* Schema Tree Container */}
-        <div className="schema-tree-container custom-scrollbar-enhanced" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        <div className="schema-tree-container custom-scrollbar-enhanced" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minHeight: 0 }}>
           <SchemaTree
             metadata={metadata}
             searchQuery={searchQuery}
