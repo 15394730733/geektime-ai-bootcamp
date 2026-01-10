@@ -604,7 +604,7 @@ class SourceState(TypedDict):
 **工作流图**：
 
 ```mermaid
-stateDiagram-v2
+stateDiagram
     [*] --> Extract: 提取内容
     Extract --> Save: 保存源
     Save --> Transform: 触发转换
@@ -848,7 +848,7 @@ class ModelManager:
 **智能选择逻辑**：
 
 ```mermaid
-flowchart TD
+graph TD
     Start[provision_langchain_model] --> CheckType{类型?}
 
     CheckType -->|language| CheckContext{上下文大小?}
@@ -1284,7 +1284,7 @@ sequenceDiagram
 ### 5.3 搜索合成流程 (ask.py)
 
 ```mermaid
-flowchart TD
+graph TD
     Start[用户提问] --> Search[vector_search]
 
     Search --> DB[(SurrealDB<br/>向量搜索)]
