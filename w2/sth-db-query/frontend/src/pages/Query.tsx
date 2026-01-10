@@ -279,14 +279,13 @@ export const QueryPage: React.FC = () => {
   }, [state.selectedDatabase, activeTabId, handleExecuteQuery]);
 
   return (
-    <div className="page-container">
-      {/* Debug Component - Remove after fixing */}
-      <DatabaseSelectorDebug />
+    <div className="page-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Debug Component - Hidden */}
+      {/* <DatabaseSelectorDebug /> */}
       
-      <div className="content-wrapper">
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          {/* Header with Back Button and Database Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="content-wrapper" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Header with Back Button and Database Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #f0f0f0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <Button
                 icon={<ArrowLeftOutlined />}
@@ -361,8 +360,8 @@ export const QueryPage: React.FC = () => {
             </div>
           )}
 
-          {/* Main Layout: Responsive Split */}
-          <div style={{ height: '70vh', width: '100%' }}>
+          {/* Main Layout: Responsive Split - Full height */}
+          <div style={{ flex: 1, width: '100%', minHeight: 0 }}>
             {!canShowSplitLayout ? (
               // Mobile Layout: Full-width query panel with drawer
               <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -434,7 +433,14 @@ export const QueryPage: React.FC = () => {
                 </Panel>
 
                 {/* Resize Handle */}
-                <PanelResizeHandle className="resize-handle resize-handle-horizontal" />
+                <PanelResizeHandle 
+                  className="resize-handle resize-handle-horizontal"
+                  style={{ 
+                    background: '#e8e8e8',
+                    borderLeft: '1px solid #d9d9d9',
+                    borderRight: '1px solid #d9d9d9'
+                  }}
+                />
 
                 {/* Right Panel - Query */}
                 <Panel
@@ -461,7 +467,6 @@ export const QueryPage: React.FC = () => {
               </PanelGroup>
             )}
           </div>
-        </Space>
       </div>
     </div>
   );

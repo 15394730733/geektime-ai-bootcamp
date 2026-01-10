@@ -9,25 +9,25 @@
 
 /* Horizontal resize handle (vertical divider) */
 .resize-handle-horizontal {
-  width: 4px;
-  background: #f0f0f0;
-  border-left: 1px solid #e8e8e8;
-  border-right: 1px solid #e8e8e8;
+  width: 4px !important;
+  background: #e8e8e8 !important;
+  border-left: 1px solid #d9d9d9 !important;
+  border-right: 1px solid #d9d9d9 !important;
   cursor: col-resize;
   position: relative;
 }
 
 .resize-handle-horizontal:hover {
-  background: #1890ff;
-  border-color: #1890ff;
-  width: 6px;
+  background: #bfbfbf !important;
+  border-color: #bfbfbf !important;
+  width: 6px !important;
   margin-left: -1px;
   margin-right: -1px;
 }
 
 .resize-handle-horizontal:active {
-  background: #096dd9;
-  border-color: #096dd9;
+  background: #8c8c8c !important;
+  border-color: #8c8c8c !important;
 }
 
 /* Add visual indicator on hover */
@@ -52,25 +52,25 @@
 
 /* Vertical resize handle (horizontal divider) */
 .resize-handle-vertical {
-  height: 4px;
-  background: #f0f0f0;
-  border-top: 1px solid #e8e8e8;
-  border-bottom: 1px solid #e8e8e8;
+  height: 4px !important;
+  background: #e8e8e8 !important;
+  border-top: 1px solid #d9d9d9 !important;
+  border-bottom: 1px solid #d9d9d9 !important;
   cursor: row-resize;
   position: relative;
 }
 
 .resize-handle-vertical:hover {
-  background: #1890ff;
-  border-color: #1890ff;
-  height: 6px;
+  background: #bfbfbf !important;
+  border-color: #bfbfbf !important;
+  height: 6px !important;
   margin-top: -1px;
   margin-bottom: -1px;
 }
 
 .resize-handle-vertical:active {
-  background: #096dd9;
-  border-color: #096dd9;
+  background: #8c8c8c !important;
+  border-color: #8c8c8c !important;
 }
 
 /* Add visual indicator on hover */
@@ -101,8 +101,8 @@
 
 /* Active dragging state */
 .resize-handle[data-resize-handle-active] {
-  background: #096dd9 !important;
-  border-color: #096dd9 !important;
+  background: #8c8c8c !important;
+  border-color: #8c8c8c !important;
 }
 
 .resize-handle-horizontal[data-resize-handle-active] {

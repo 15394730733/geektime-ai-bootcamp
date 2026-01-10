@@ -73,7 +73,8 @@ export const TabBar: React.FC<TabBarProps> = ({
 
   return (
     <div className="border-b border-gray-200 bg-white">
-      {/* Database name header */}
+      {/* Database name header - Hidden as per user request */}
+      {/* 
       <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <DatabaseOutlined className="text-blue-500" />
@@ -82,6 +83,7 @@ export const TabBar: React.FC<TabBarProps> = ({
           </Text>
         </div>
       </div>
+      */}
 
       {/* Tabs */}
       <Tabs
