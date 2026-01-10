@@ -219,7 +219,7 @@ graph LR
 **1. 编译独立可执行文件**
 
 ```bash
-cd venders/codex/codex-rs/apply-patch
+cd vendors/codex/codex-rs/apply-patch
 cargo build --release
 ```
 
@@ -356,7 +356,7 @@ else:
 
 ```toml
 [dependencies]
-codex-apply-patch = { path = "venders/codex/codex-rs/apply-patch" }
+codex-apply-patch = { path = "vendors/codex/codex-rs/apply-patch" }
 anyhow = "1.0"
 thiserror = "1.0"
 ```
@@ -856,7 +856,7 @@ graph TD
 
 ```bash
 # 克隆或获取 codex 源码
-cd venders/codex/codex-rs/apply-patch
+cd vendors/codex/codex-rs/apply-patch
 
 # 编译发布版本
 cargo build --release
@@ -2176,9 +2176,9 @@ pub enum ApplyPatchError { ... }
 
 ### C. 相关资源
 
-- **源代码**: `venders/codex/codex-rs/apply-patch/`
-- **测试**: `venders/codex/codex-rs/apply-patch/tests/`
-- **文档**: `venders/codex/codex-rs/apply-patch/README.md`
+- **源代码**: `vendors/codex/codex-rs/apply-patch/`
+- **测试**: `vendors/codex/codex-rs/apply-patch/tests/`
+- **文档**: `vendors/codex/codex-rs/apply-patch/README.md`
 - **语法定义**: `tool_apply_patch.lark`
 
 ### D. 贡献指南
