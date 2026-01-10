@@ -170,3 +170,6 @@ test-results/
 
 # UnoCSS
 .unocss/
+
+# Incorrect vendor spelling (should be vendors/)
+venders/
