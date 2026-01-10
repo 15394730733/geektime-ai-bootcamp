@@ -12,4 +12,8 @@
 帮我查看codex 的所有 commit history，梳理其代码变更的脉络，必要时可以使用 mermaid chart来辅助说明。 写入./sth-specs/w4/codex-changes-by-claude.md
 
 ### 了解 codex 的 apply_patch 工具
-帮我梳理./vendors/codex 的 apply_patch 工具，详细解读 apply_patch 工具的原理，如何使用，如何实现，如何测试等等。以及apply_patch 工具的代码是如何跟 codex 其他部分集成的，另外我注意到 apply_patch_tool_instructions.md 文件,这个文件是做什么的？如何跟 apply_patch crate 打交道。如果需要， 可以用mermaid chart来辅助说明。写入 ./sth-specs/w4/apply-patch.md
+帮我梳理./vendors/codex 的 apply_patch 工具，详细解读 apply_patch 工具的原理，如何使用，如何实现，如何测试等等。以及apply_patch 工具的代码是如何跟 codex 其他部分集成的，另外我注意到 apply_patch_tool_instructions.md 文件,这个文件是做什么的？如何跟 apply_patch crate 打交道。如果需要， 可以用mermaid chart来辅助说明。写入 ./sth-specs/w4/codex-apply-patch.md
+
+## apply_patch 工具集成
+如果我要把 apply_patch工具集成到我自己的项目中，我需要做哪些工作，如何做等等。如果需要，可以用 mermaid chart来辅助说明。
+写入 ./sth-specs/w4/codex-apply-patch-integration.md
