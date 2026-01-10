@@ -1,3 +1,12 @@
+---
+
+> **⚠️ 图表说明**: 本文档包含大量架构设计图。由于不同平台对 Mermaid 图表的渲染支持差异，
+> 为确保最佳阅读体验，建议：
+> 1. 使用支持 Mermaid 的 Markdown 编辑器（如 Typora、Obsidian、VS Code + Markdown Preview Enhanced）
+> 2. 或访问 [Mermaid Live Editor](https://mermaid.live) 在线查看图表
+
+---
+
 # Open Notebook 架构设计分析文档
 
 > **项目**: Open Notebook - 开源 AI 研究助手
@@ -57,46 +66,12 @@
 
 ### 2.1 技术栈全景图
 
-```mermaid
-graph TB
-    subgraph "前端层"
-        A1[Next.js 15<br/>React 19]
-        A2[TypeScript]
-        A3[Zustand<br/>状态管理]
-        A4[TanStack Query<br/>数据获取]
-        A5[Tailwind CSS<br/>Shadcn/ui]
-    end
 
-    subgraph "API 层"
-        B1[FastAPI<br/>Python 3.11+]
-        B2[Pydantic v2<br/>验证]
-        B3[Loguru<br/>日志]
-    end
+> **📊 架构图 1**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    subgraph "工作流层"
-        C1[LangGraph<br/>状态机]
-        C2[AI-Prompter<br/>模板引擎]
-        C3[content-core<br/>内容提取]
-    end
 
-    subgraph "数据层"
-        D1[SurrealDB<br/>图数据库]
-        D2[向量存储<br/>语义搜索]
-        D3[SQLite<br/>检查点]
-    end
-
-    subgraph "AI 层"
-        E1[Esperanto<br/>多提供商抽象]
-        E2[8+ AI Providers<br/>OpenAI/Anthropic/Ollama等]
-        E3[Embeddings<br/>TTS/STT]
-    end
-
-    A1 --> B1
-    B1 --> C1
-    C1 --> D1
-    C1 --> E1
-    B1 --> D1
-```
 
 ### 2.2 前端技术栈
 
@@ -134,83 +109,21 @@ graph TB
 
 ### 3.1 三层架构图
 
-```mermaid
-graph TB
-    subgraph "前端 Frontend (port 3000)"
-        UI[用户界面<br/>React/Next.js]
-        State[Zustand State<br/>TanStack Query]
-    end
 
-    subgraph "API Gateway (port 5055)"
-        Router[路由层<br/>Routers]
-        Middleware[CORS<br/>Auth Middleware]
-        Service[服务层<br/>Services]
-    end
+> **📊 架构图 2**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    subgraph "业务逻辑"
-        Graph[LangGraph 工作流<br/>状态机]
-        Domain[领域模型<br/>Domain Models]
-        AI[AI 提供商<br/>Esperanto]
-    end
 
-    subgraph "数据持久化 (port 8000)"
-        DB[(SurrealDB<br/>图数据库)]
-        Vector[向量存储<br/>语义搜索]
-        Files[文件存储<br/>上传内容]
-    end
-
-    subgraph "任务队列"
-        Queue[Surreal-Commands<br/>异步任务]
-    end
-
-    UI --> Router
-    State --> Router
-    Router --> Middleware
-    Middleware --> Service
-    Service --> Graph
-    Service --> Domain
-    Graph --> AI
-    Domain --> DB
-    Service --> DB
-    Graph --> Queue
-    Queue --> DB
-```
 
 ### 3.2 模块依赖关系
 
-```mermaid
-graph LR
-    subgraph "API 层"
-        API[api/]
-        Router[routers/]
-        Service[*_service.py]
-        Models[models.py]
-    end
 
-    subgraph "核心层"
-        ON[open_notebook/]
-        Graph[graphs/]
-        Domain[domain/]
-    end
+> **📊 架构图 3**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    subgraph "基础设施"
-        DB[database/]
-        AI[ai/]
-        Utils[utils/]
-        Config[config.py]
-    end
 
-    Router --> Service
-    Service --> Models
-    Service --> Graph
-    Service --> Domain
-    Graph --> AI
-    Graph --> Domain
-    Domain --> DB
-    Domain --> AI
-    Graph --> Utils
-    API --> Config
-```
 
 ### 3.3 目录结构
 
@@ -282,28 +195,12 @@ open-notebook/
 
 #### 4.1.1 架构设计
 
-```mermaid
-graph TD
-    Request[HTTP 请求] --> Router{路由分发}
 
-    Router --> |POST /chat| ChatRouter
-    Router --> |POST /sources| SourcesRouter
-    Router --> |POST /podcasts| PodcastsRouter
-    Router --> |GET /notebooks| NotebooksRouter
+> **📊 架构图 4**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    ChatRouter --> ChatService[chat_service]
-    SourcesRouter --> SourcesService[sources_service]
-    PodcastsRouter --> PodcastService[podcast_service]
-    NotebooksRouter --> NotebooksService[notebooks_service]
 
-    ChatService --> ChatGraph[graphs/chat.py]
-    SourcesService --> SourceGraph[graphs/source.py]
-    PodcastService --> Queue[异步任务队列]
-
-    ChatGraph --> AI[AI 提供商]
-    SourceGraph --> DB[(SurrealDB)]
-    Queue --> DB
-```
 
 #### 4.1.2 启动流程
 
@@ -392,49 +289,12 @@ class ChatService:
 
 **ObjectModel** - 可变记录基类
 
-```mermaid
-classDiagram
-    class ObjectModel {
-        +str id
-        +datetime created
-        +datetime updated
-        +List[str] embedding
-        +save() async
-        +delete() async
-        +relate(relationship, target)
-        +get(id) static
-        +get_all() static
-    }
 
-    class Notebook {
-        +str name
-        +str description
-        +bool archived
-        +get_sources()
-        +get_notes()
-        +get_chat_sessions()
-    }
+> **📊 架构图 5**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    class Source {
-        +str title
-        +str full_text
-        +str url
-        +RecordID command
-        +vectorize()
-        +get_context()
-        +add_insight()
-    }
 
-    class Note {
-        +str content
-        +str type
-        +add_to_notebook()
-    }
-
-    ObjectModel <|-- Notebook
-    ObjectModel <|-- Source
-    ObjectModel <|-- Note
-```
 
 **核心特性**：
 
@@ -475,48 +335,23 @@ class DefaultPrompts(RecordModel):
 
 **关系图**：
 
-```mermaid
-graph LR
-    Notebook[Notebook] -->|has| Source[Source]
-    Notebook -->|artifact| Note[Note]
-    Source -->|artifact| SourceInsight[SourceInsight]
-    Note -->|refers_to| Source
-    Notebook -->|refers_to| ChatSession[ChatSession]
 
-    Source[Source] -->|async| Vectorize[向量化任务]
-    ChatSession -->|generates| Podcast[PodcastEpisode]
-```
+> **📊 架构图 6**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
+
+
 
 #### 4.2.3 数据持久化
 
 **保存流程**：
 
-```mermaid
-sequenceDiagram
-    participant Model as 领域模型
-    participant Repo as Repository
-    participant DB as SurrealDB
-    participant AI as ModelManager
-    participant Queue as 任务队列
 
-    Model->>Repo: save()
-    Repo->>DB: CREATE/UPDATE
+> **📊 架构图 7**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    alt needs_embedding() == True
-        Model->>AI: generate_embedding()
-        AI->>AI: 调用嵌入模型
-        AI-->>Model: embedding向量
-        Model->>Repo: save() (带嵌入)
-        Repo->>DB: UPDATE with embedding
-    end
 
-    alt is_large_source()
-        Model->>Queue: submit_command(async_embed)
-        Queue-->>Model: command_id
-    end
-
-    DB-->>Model: id, created, updated
-```
 
 **关键方法**：
 
@@ -552,40 +387,12 @@ class ObjectModel(BaseModel):
 
 #### 4.3.1 LangGraph 架构
 
-```mermaid
-graph TB
-    subgraph "source.py - 内容摄取"
-        S1[content_process<br/>提取内容]
-        S2[save_source<br/>保存源]
-        S3[trigger_transformations<br/>触发转换]
-        S1 --> S2 --> S3
-    end
 
-    subgraph "chat.py - 对话"
-        C1[load_context<br/>加载上下文]
-        C2[call_model<br/>调用LLM]
-        C3[persist_message<br/>持久化消息]
-        C1 --> C2 --> C3
-    end
+> **📊 架构图 8**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    subgraph "ask.py - 搜索合成"
-        A1[search_sources<br/>搜索源]
-        A2[synthesize<br/>合成答案]
-        A1 --> A2
-    end
 
-    subgraph "transformation.py - 转换"
-        T1[apply_prompt<br/>应用提示]
-        T2[save_result<br/>保存结果]
-        T1 --> T2
-    end
-
-    subgraph "source_chat.py - 源对话"
-        SC1[load_source<br/>加载源]
-        SC2[chat_with_source<br/>与源对话]
-        SC1 --> SC2
-    end
-```
 
 #### 4.3.2 source.py - 内容摄取工作流
 
@@ -603,31 +410,12 @@ class SourceState(TypedDict):
 
 **工作流图**：
 
-```mermaid
-stateDiagram
-    [*] --> Extract: 提取内容
-    Extract --> Save: 保存源
-    Save --> Transform: 触发转换
-    Transform --> [*]
 
-    state Extract {
-        [*] --> Extracting
-        Extracting --> Extracted
-        Extracted --> [*]
-    }
+> **📊 架构图 9**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    state Save {
-        [*] --> Saving
-        Saving --> Saved
-        Saved --> [*]
-    }
 
-    state Transform {
-        [*] --> Triggering
-        Triggering --> Triggered
-        Triggered --> [*]
-    }
-```
 
 **实现**：
 
@@ -707,29 +495,12 @@ class ChatState(TypedDict):
 
 **工作流图**：
 
-```mermaid
-sequenceDiagram
-    participant User as 用户
-    participant API as API
-    participant CB as ContextBuilder
-    participant DB as Database
-    participant Graph as chat.py
-    participant AI as AI Provider
-    participant SQLite as SqliteSaver
 
-    User->>API: 发送消息
-    API->>CB: build_context(notebook_id)
-    CB->>DB: 查询源/笔记
-    DB-->>CB: 返回内容
-    CB-->>API: 返回组装的上下文
+> **📊 架构图 10**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    API->>Graph: ainvoke(state, config)
-    Graph->>AI: call_llm(messages, context)
-    AI-->>Graph: 返回响应
-    Graph->>SQLite: 保存消息到检查点
-    Graph-->>API: 返回 AI 响应
-    API-->>User: 返回响应
-```
+
 
 **实现**：
 
@@ -775,46 +546,12 @@ chat_graph = chat_graph.compile(checkpointer=checkpointer)
 
 #### 4.4.1 Esperanto 抽象
 
-```mermaid
-graph TB
-    subgraph "应用层"
-        App[Open Notebook]
-    end
 
-    subgraph "抽象层"
-        MM[ModelManager]
-        PL[provision_langchain_model]
-    end
+> **📊 架构图 11**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    subgraph "Esperanto 库"
-        AI[AIProvider<br/>统一接口]
-        Factory[AIFactory<br/>工厂模式]
-    end
 
-    subgraph "提供商层"
-        OpenAI[OpenAI]
-        Anthropic[Anthropic]
-        Google[Google Gemini]
-        Groq[Groq]
-        Ollama[Ollama<br/>本地]
-        Mistral[Mistral]
-        DeepSeek[DeepSeek]
-        xAI[xAI]
-    end
-
-    App --> MM
-    MM --> PL
-    PL --> Factory
-    Factory --> AI
-    AI --> OpenAI
-    AI --> Anthropic
-    AI --> Google
-    AI --> Groq
-    AI --> Ollama
-    AI --> Mistral
-    AI --> DeepSeek
-    AI --> xAI
-```
 
 #### 4.4.2 ModelManager
 
@@ -847,32 +584,12 @@ class ModelManager:
 
 **智能选择逻辑**：
 
-```mermaid
-graph TD
-    Start[provision_langchain_model] --> CheckType{类型?}
 
-    CheckType -->|language| CheckContext{上下文大小?}
-    CheckType -->|embedding| GetEmbedding[获取默认嵌入模型]
-    CheckType -->|speech_to_text| GetSTT[获取默认 STT 模型]
-    CheckType -->|text_to_speech| GetTTS[获取默认 TTS 模型]
+> **📊 架构图 12**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    CheckContext -->|> 105K tokens| UseLarge[使用大上下文模型]
-    CheckContext -->|<= 105K tokens| UseDefault[使用默认聊天模型]
 
-    CheckOverride{有 model_override?}
-    UseLarge --> CheckOverride
-    UseDefault --> CheckOverride
-
-    CheckOverride -->|是| UseOverride[使用覆盖模型]
-    CheckOverride -->|否| ReturnModel[返回选定模型]
-
-    UseOverride --> ReturnModel
-    GetEmbedding --> ReturnModel
-    GetSTT --> ReturnModel
-    GetTTS --> ReturnModel
-
-    ReturnModel --> End[返回 LangChain Runnable]
-```
 
 **关键特性**：
 
@@ -900,52 +617,12 @@ graph TD
 
 #### 4.5.1 SurrealDB 架构
 
-```mermaid
-graph TB
-    subgraph "应用层"
-        App[FastAPI / LangGraph]
-    end
 
-    subgraph "Repository 层"
-        Repo[repository.py]
-        Query[repo_query]
-        Create[repo_create]
-        Upsert[repo_upsert]
-        Delete[repo_delete]
-        Relate[repo_relate]
-    end
+> **📊 架构图 13**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    subgraph "SurrealDB Driver"
-        Driver[AsyncSurreal Client]
-        Connection[连接池]
-    end
 
-    subgraph "SurrealDB Server"
-        SurrealDB[SurrealDB<br/>port 8000]
-        NS[命名空间: open_notebook]
-        DB[数据库: main]
-        Tables[表 & 关系]
-        Vector[向量存储]
-    end
-
-    App --> Repo
-    Repo --> Query
-    Repo --> Create
-    Repo --> Upsert
-    Repo --> Delete
-    Repo --> Relate
-    Query --> Driver
-    Create --> Driver
-    Upsert --> Driver
-    Delete --> Driver
-    Relate --> Driver
-    Driver --> Connection
-    Connection --> SurrealDB
-    SurrealDB --> NS
-    NS --> DB
-    DB --> Tables
-    DB --> Vector
-```
 
 #### 4.5.2 Repository 模式
 
@@ -1066,28 +743,12 @@ migrations/
 
 **职责**：从多个来源组装 LLM 上下文，同时遵守 token 预算。
 
-```mermaid
-graph TD
-    Request[请求上下文] --> CB[ContextBuilder]
 
-    CB --> LoadSources[加载源]
-    CB --> LoadNotes[加载笔记]
-    CB --> LoadInsights[加载洞察]
+> **📊 架构图 14**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    LoadSources --> CountTokens[计算 tokens]
-    LoadNotes --> CountTokens
-    LoadInsights --> CountTokens
 
-    CountTokens --> Budget{Token 预算}
-
-    Budget -->|未超预算| AddContext[添加到上下文]
-    Budget -->|超预算| Truncate[截断或丢弃]
-
-    AddContext --> Build[构建最终上下文]
-    Truncate --> Build
-
-    Build --> Return[返回上下文字符串]
-```
 
 **实现**：
 
@@ -1191,48 +852,12 @@ class TextUtils:
 
 ### 5.1 内容摄取流程
 
-```mermaid
-sequenceDiagram
-    participant User as 用户
-    participant UI as 前端
-    participant API as API
-    participant Service as sources_service
-    participant Graph as source.py
-    participant Content as content-core
-    participant DB as SurrealDB
-    participant Queue as 任务队列
-    participant Embed as embedding_commands
-    participant Trans as transformation.py
 
-    User->>UI: 上传文件/输入 URL
-    UI->>API: POST /sources
-    API->>Service: create_source()
+> **📊 架构图 15**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    Service->>DB: 创建 Source 记录
-    DB-->>Service: source_id
 
-    Service->>Graph: ainvoke(source_id)
-    Graph->>Content: extract_content()
-    Content-->>Graph: content, metadata
-
-    Graph->>DB: 保存 full_text, title
-
-    Graph->>Queue: 提交向量化任务
-    Queue-->>Graph: command_id
-
-    Graph->>Trans: 并行触发所有转换
-    Trans->>DB: 生成 SourceInsight
-
-    Graph-->>Service: 完成
-    Service-->>API: source_id, command_id
-    API-->>UI: 返回结果
-    UI-->>User: 显示成功，command_id 用于追踪
-
-    Note over Queue,Embed: 异步向量化（后台）
-    Queue->>Embed: 执行嵌入
-    Embed->>AI: 调用嵌入模型
-    Embed->>DB: 保存 SourceEmbedding
-```
 
 **关键点**：
 - ✅ **快速响应**：立即返回 `source_id`，不等待向量化完成
@@ -1242,39 +867,12 @@ sequenceDiagram
 
 ### 5.2 对话流程
 
-```mermaid
-sequenceDiagram
-    participant User as 用户
-    participant UI as 前端
-    participant API as chat_service
-    participant CB as ContextBuilder
-    participant DB as SurrealDB
-    participant Graph as chat.py
-    participant AI as AI Provider
-    participant Checkpoint as SqliteSaver
 
-    User->>UI: 发送消息
-    UI->>API: POST /chat {message, session_id}
-    API->>DB: 加载 ChatSession
+> **📊 架构图 16**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    API->>CB: build_context(notebook_id)
-    CB->>DB: 查询源、笔记
-    DB-->>CB: 返回内容
-    CB-->>API: 上下文字符串
 
-    API->>Graph: ainvoke(messages, context, config)
-    Graph->>Checkpoint: 加载历史消息
-    Checkpoint-->>Graph: 历史消息
-
-    Graph->>AI: ainvoke(prompt + context)
-    AI-->>Graph: AI 响应
-
-    Graph->>Checkpoint: 保存新消息到检查点
-
-    Graph-->>API: AI 响应
-    API-->>UI: 返回响应
-    UI-->>User: 显示 AI 回复
-```
 
 **状态管理**：
 - **消息历史**：通过 SqliteSaver 持久化
@@ -1283,22 +881,12 @@ sequenceDiagram
 
 ### 5.3 搜索合成流程 (ask.py)
 
-```mermaid
-graph TD
-    Start[用户提问] --> Search[vector_search]
 
-    Search --> DB[(SurrealDB<br/>向量搜索)]
-    DB --> Results[返回相关源]
+> **📊 架构图 17**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    Results --> BuildContext[组装上下文]
-    BuildContext --> Synthesize[调用 LLM 合成]
 
-    Synthesize --> AI[AI Provider]
-    AI --> Response[生成答案]
-
-    Response --> Citations[添加引用]
-    Citations --> End[返回答案+引用]
-```
 
 **vs Chat 的区别**：
 - ❌ 无消息历史
@@ -1307,44 +895,12 @@ graph TD
 
 ### 5.4 播客生成流程
 
-```mermaid
-sequenceDiagram
-    participant User as 用户
-    participant API as podcast_service
-    participant Queue as surreal-commands
-    participant Worker as podcast_commands
-    participant AI as AI Provider
-    participant TTS as TTS Engine
-    participant DB as SurrealDB
 
-    User->>API: POST /podcasts {sources, profile}
-    API->>DB: 创建 PodcastEpisode (pending)
+> **📊 架构图 18**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    API->>Queue: submit_command(generate_podcast)
-    Queue-->>API: command_id
-    API-->>User: 返回 command_id
 
-    Note over Queue,Worker: 后台异步执行
-
-    Queue->>Worker: 执行任务
-    Worker->>Worker: 1. 生成大纲 (outline.jinja)
-    Worker->>AI: 调用 LLM 生成结构
-    AI-->>Worker: 大纲
-
-    Worker->>Worker: 2. 生成逐字稿 (transcript.jinja)
-    Worker->>AI: 调用 LLM 填充内容
-    AI-->>Worker: 逐字稿
-
-    Worker->>TTS: 3. TTS 合成
-    TTS->>TTS: 每个说话人独立合成
-    TTS-->>Worker: 音频片段
-
-    Worker->>Worker: 4. 混音
-    Worker->>DB: 更新 PodcastEpisode (completed)
-
-    User->>API: GET /commands/{command_id}
-    API-->>User: 返回状态和结果
-```
 
 **关键特性**：
 - ✅ **两阶段生成**：先大纲，后逐字稿
@@ -1371,37 +927,12 @@ sequenceDiagram
 
 ### 6.2 分层架构
 
-```mermaid
-graph TB
-    subgraph "表现层 Presentation"
-        UI[React UI<br/>frontend/]
-    end
 
-    subgraph "应用层 Application"
-        Router[API Routers<br/>api/routers/]
-        Service[Services<br/>api/*_service.py]
-    end
+> **📊 架构图 19**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    subgraph "领域层 Domain"
-        Graph[LangGraph 工作流<br/>graphs/]
-        Model[领域模型<br/>domain/]
-    end
 
-    subgraph "基础设施层 Infrastructure"
-        DB[Database<br/>database/]
-        AI[AI Providers<br/>ai/]
-        Utils[Utilities<br/>utils/]
-    end
-
-    UI --> Router
-    Router --> Service
-    Service --> Graph
-    Service --> Model
-    Graph --> Model
-    Graph --> AI
-    Model --> DB
-    Service --> DB
-```
 
 **依赖规则**：
 - ✅ 上层可以依赖下层
@@ -1412,26 +943,12 @@ graph TB
 
 **全栈异步**：
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API as FastAPI
-    participant DB as SurrealDB
-    participant AI as AI Provider
-    participant Queue as 任务队列
 
-    Client->>API: async HTTP 请求
-    API->>DB: async repo_query()
-    DB-->>API: async 结果
+> **📊 架构图 20**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    API->>AI: async model.ainvoke()
-    AI-->>API: async 响应
 
-    API->>Queue: async submit_command()
-    Queue-->>API: async command_id
-
-    API-->>Client: async 响应
-```
 
 **优势**：
 - ✅ 高并发处理
@@ -1566,20 +1083,12 @@ open-notebook/
 
 **同步 vs 异步**：
 
-```mermaid
-graph TB
-    subgraph "同步方式"
-        S1[上传文件] --> S2[向量化 30s]
-        S2 --> S3[返回结果]
-        S3 -.阻塞.-> S2
-    end
 
-    subgraph "异步方式"
-        A1[上传文件] --> A2[提交任务]
-        A2 --> A3[立即返回 command_id]
-        A2 --> A4[后台向量化 30s]
-    end
-```
+> **📊 架构图 21**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
+
+
 
 **选择异步理由**：
 1. **用户体验**：不阻塞 UI
@@ -1593,48 +1102,12 @@ graph TB
 
 ### 8.1 水平扩展
 
-```mermaid
-graph TB
-    subgraph "负载均衡层"
-        LB[Nginx / Traefik]
-    end
 
-    subgraph "API 层"
-        API1[API 实例 1<br/>:5055]
-        API2[API 实例 2<br/>:5055]
-        API3[API 实例 N<br/>:5055]
-    end
+> **📊 架构图 22**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
 
-    subgraph "任务队列"
-        Queue[surreal-commands]
-        Worker1[Worker 1]
-        Worker2[Worker 2]
-        WorkerN[Worker N]
-    end
 
-    subgraph "数据库层"
-        DB[(SurrealDB Cluster<br/>分布式)]
-    end
-
-    LB --> API1
-    LB --> API2
-    LB --> API3
-
-    API1 --> Queue
-    API2 --> Queue
-    API3 --> Queue
-
-    Queue --> Worker1
-    Queue --> Worker2
-    Queue --> WorkerN
-
-    API1 --> DB
-    API2 --> DB
-    API3 --> DB
-    Worker1 --> DB
-    Worker2 --> DB
-    WorkerN --> DB
-```
 
 **扩展点**：
 1. **API 层**：无状态服务，可水平扩展
@@ -1903,16 +1376,12 @@ class CachedNotebook:
 
 **缓存层级**：
 
-```mermaid
-graph LR
-    A[请求] --> B{L1 缓存<br/>内存}
-    B -->|命中| C[返回]
-    B -->|未命中| D{L2 缓存<br/>Redis}
-    D -->|命中| C
-    D -->|未命中| E[(数据库)]
-    E --> F[更新缓存]
-    F --> C
-```
+
+> **📊 架构图 23**: 为确保最佳的跨平台兼容性，
+> 所有架构图已移除 Mermaid 代码块。
+> 您可以访问 [Mermaid Live Editor](https://mermaid.live) 查看交互式图表。
+
+
 
 ### 10.3 并发优化
 
