@@ -51,8 +51,7 @@ export const MetadataPanel: React.FC<MetadataPanelProps> = ({
             padding: '16px', 
             flex: 1, 
             display: 'flex', 
-            flexDirection: 'column',
-            overflow: 'hidden'
+            flexDirection: 'column'
           } 
         }}
       >
@@ -69,7 +68,7 @@ export const MetadataPanel: React.FC<MetadataPanelProps> = ({
         </div>
 
         {/* Schema Tree Container */}
-        <div className="schema-tree-container custom-scrollbar-enhanced" style={{ flex: 1, overflow: 'hidden' }}>
+        <div className="schema-tree-container custom-scrollbar-enhanced" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           <SchemaTree
             metadata={metadata}
             searchQuery={searchQuery}

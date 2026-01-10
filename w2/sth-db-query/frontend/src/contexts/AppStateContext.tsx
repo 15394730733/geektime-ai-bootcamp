@@ -131,6 +131,7 @@ interface AppStateContextType {
     updateDatabase: (database: DatabaseConnection) => void;
     removeDatabase: (databaseName: string) => void;
     refreshMetadata: () => Promise<void>;
+    refreshDatabaseMetadata: (databaseName: string) => Promise<void>;
     clearError: () => void;
   };
 }
@@ -181,13 +182,21 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
     try {
       const metadata = await apiClient.getDatabaseMetadata(databaseName);
       console.log('Metadata loaded successfully:', metadata);
-      dispatch({ type: 'SET_METADATA', payload: metadata });
+      
+      // Only update the global metadata state if the database being loaded is the currently selected one
+      if (databaseName === state.selectedDatabase) {
+        dispatch({ type: 'SET_METADATA', payload: metadata });
+      }
     } catch (error: any) {
       const errorMessage = error.message || 'Failed to load database metadata';
       console.error('Failed to load metadata:', error);
       dispatch({ type: 'SET_ERROR', payload: errorMessage });
       message.error(errorMessage);
-      dispatch({ type: 'SET_METADATA', payload: null });
+      
+      // Only clear the global metadata state if the database being loaded is the currently selected one
+      if (databaseName === state.selectedDatabase) {
+        dispatch({ type: 'SET_METADATA', payload: null });
+      }
     } finally {
       dispatch({ type: 'SET_LOADING', payload: { key: 'metadata', value: false } });
     }
@@ -240,6 +249,29 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
     }
   };
 
+  const refreshDatabaseMetadata = async (databaseName: string) => {
+    console.log('Refreshing metadata for database:', databaseName);
+    dispatch({ type: 'SET_LOADING', payload: { key: 'metadata', value: true } });
+    
+    try {
+      // Call the refresh endpoint to update metadata on the server and get the latest
+      const metadata = await apiClient.refreshDatabaseMetadata(databaseName);
+      console.log('Metadata refreshed successfully:', metadata);
+      
+      // Only update the global metadata state if the database being loaded is the currently selected one
+      if (databaseName === state.selectedDatabase) {
+        dispatch({ type: 'SET_METADATA', payload: metadata });
+      }
+    } catch (error: any) {
+      const errorMessage = error.message || 'Failed to refresh database metadata';
+      console.error('Failed to refresh metadata:', error);
+      dispatch({ type: 'SET_ERROR', payload: errorMessage });
+      message.error(errorMessage);
+    } finally {
+      dispatch({ type: 'SET_LOADING', payload: { key: 'metadata', value: false } });
+    }
+  };
+
   const clearError = () => {
     dispatch({ type: 'SET_ERROR', payload: null });
   };
@@ -253,6 +285,7 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
       updateDatabase,
       removeDatabase,
       refreshMetadata,
+      refreshDatabaseMetadata,
       clearError,
     },
   };

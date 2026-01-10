@@ -61,3 +61,6 @@ POST /api/v1/dbs/{name}/query/natural
 ## ui ux界面优化 
 
 ![alt text](image.png) query界面使用这样的页面布局
+
+其他可参考
+按照 apple website 的设计风格,think ultra hard,优化 UI 和 UX。  

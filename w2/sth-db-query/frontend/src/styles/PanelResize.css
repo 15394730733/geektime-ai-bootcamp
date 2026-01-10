@@ -96,3 +96,13 @@
   width: 4px;
   height: 4px;
 }
+
+/* Expand click area for Segmented component items */
+.ant-segmented-item {
+  padding: 8px 16px !important;
+}
+
+.ant-segmented-item-label {
+  padding: 0 !important;
+  margin: 0 !important;
+}

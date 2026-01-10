@@ -59,6 +59,16 @@ export const DatabaseListPage = () => {
     navigate(`/query?db=${encodeURIComponent(databaseName)}`);
   };
 
+  const handleRefreshDatabase = async (databaseName: string) => {
+    try {
+      // Refresh the database metadata regardless of whether it's selected
+      await actions.refreshDatabaseMetadata(databaseName);
+      message.success(`Database ${databaseName} refreshed successfully`);
+    } catch (error: any) {
+      message.error(error.message || `Failed to refresh database ${databaseName}`);
+    }
+  };
+
   return (
     <div className="page-container">
       <div className="content-wrapper">
@@ -77,6 +87,7 @@ export const DatabaseListPage = () => {
               });
             }}
             onRefresh={actions.loadDatabases}
+            onRefreshDatabase={handleRefreshDatabase}
             onDatabaseClick={handleDatabaseClick}
           />
 

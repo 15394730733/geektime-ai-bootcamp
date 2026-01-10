@@ -179,6 +179,15 @@ class APIClient {
     return response.data.data!;
   }
 
+  // Refresh database metadata
+  async refreshDatabaseMetadata(name: string): Promise<DatabaseMetadata> {
+    const response = await this.client.post<APIResponse<DatabaseMetadata>>(`/dbs/${name}/refresh`);
+    if (!response.data.success) {
+      throw new Error(response.data.message);
+    }
+    return response.data.data!;
+  }
+
   // Query execution
   async executeQuery(databaseName: string, query: QueryRequest): Promise<QueryResult> {
     const response = await this.client.post<APIResponse<QueryResult>>(

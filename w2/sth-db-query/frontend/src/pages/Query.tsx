@@ -295,10 +295,6 @@ export const QueryPage: React.FC = () => {
               >
                 Back to Databases
               </Button>
-              <Typography.Title level={2} style={{ margin: 0 }}>
-                <DatabaseOutlined style={{ marginRight: '8px' }} />
-                Query Tool
-              </Typography.Title>
             </div>
             
             {/* Database Selection moved to header */}

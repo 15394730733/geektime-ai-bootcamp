@@ -120,7 +120,6 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
         alignItems: 'center'
       }}>
         <Space>
-          <span style={{ fontWeight: 600, fontSize: '14px' }}>Query</span>
           <Segmented
             value={queryMode}
             onChange={(value) => setQueryMode(value as QueryMode)}
@@ -136,6 +135,7 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
                 icon: <MessageOutlined />,
               },
             ]}
+            style={{ padding: '4px', fontSize: '14px' }}
           />
         </Space>
         <Space>
@@ -161,7 +161,7 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
       {/* Editor or Natural Language Input */}
       <div style={{ 
         flex: 1, 
-        minHeight: '300px', 
+        minHeight: '100px', 
         background: 'white',
         display: 'flex',
         flexDirection: 'column',

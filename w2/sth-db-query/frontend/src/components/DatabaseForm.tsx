@@ -213,7 +213,12 @@ export const DatabaseForm: React.FC<DatabaseFormProps> = ({
             <Button
               type="default"
               onClick={() => {
-                form.resetFields();
+                // 如果是编辑模式，清空所有字段；否则使用resetFields()
+                if (initialValues) {
+                  form.setFieldsValue({ name: '', url: '', description: '' });
+                } else {
+                  form.resetFields();
+                }
                 setTestResult(null);
               }}
               disabled={loading}

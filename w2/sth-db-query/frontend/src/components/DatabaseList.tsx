@@ -17,6 +17,7 @@ export interface DatabaseListProps {
   onEdit?: (database: DatabaseConnection) => void;
   onDelete?: (id: string) => void;
   onRefresh?: () => void;
+  onRefreshDatabase?: (databaseName: string) => void;
   onDatabaseClick?: (databaseName: string) => void;
 }
 
@@ -57,6 +58,7 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
   onEdit,
   onDelete,
   onRefresh,
+  onRefreshDatabase,
   onDatabaseClick,
 }) => {
   const databases = data || [];
@@ -81,31 +83,6 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
           }}
           styles={{ body: { padding: '12px 16px' } }}
           onClick={() => onDatabaseClick?.(database.name)}
-          actions={[
-            <Button
-              key="edit"
-              type="link"
-              size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit?.(database);
-              }}
-            >
-              Edit
-            </Button>,
-            <Button
-              key="delete"
-              type="link"
-              size="small"
-              danger
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete?.(database.name);
-              }}
-            >
-              Delete
-            </Button>,
-          ]}
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -143,6 +120,91 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
                   </Tooltip>
                 )}
               </div>
+            </div>
+          </div>
+          
+          {/* Custom Actions Bar */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'center',
+            marginTop: '12px',
+            paddingTop: '12px',
+            borderTop: '1px solid #f0f0f0',
+          }}>
+            {/* Edit Button */}
+            <div
+              style={{
+                marginRight: '8px',
+                flex: 1,
+                textAlign: 'right',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit?.(database);
+              }}
+            >
+              <Button
+                type="link"
+                size="small"
+                style={{ 
+                  padding: '8px 16px', 
+                  width: '100%',
+                  textAlign: 'right'
+                }}
+              >
+                Edit
+              </Button>
+            </div>
+            
+            {/* Update Button */}
+            <div
+              style={{
+                marginRight: '8px',
+                flex: 1,
+                textAlign: 'right',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRefreshDatabase?.(database.name);
+              }}
+            >
+              <Button
+                type="link"
+                size="small"
+                style={{ 
+                  padding: '8px 16px', 
+                  width: '100%',
+                  textAlign: 'right'
+                }}
+              >
+                Update
+              </Button>
+            </div>
+            
+            {/* Delete Button */}
+            <div
+              style={{
+                flex: 1,
+                textAlign: 'right',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.(database.name);
+              }}
+            >
+              <Button
+                type="link"
+                size="small"
+                danger
+                style={{ 
+                  padding: '8px 16px', 
+                  width: '100%',
+                  textAlign: 'right'
+                }}
+              >
+                Delete
+              </Button>
             </div>
           </div>
         </Card>
