@@ -7,3 +7,9 @@
 
 ## 工具调用
 帮我梳理codex 代码处理工具调用的部分，详细解读codex 是如何知道有哪些工具可以调用，如何选择工具，如何调用工具，如何处理工具的返回结果，如何决定工具调用是否成功等等。如果需要，可以用 mermaid chart来辅助说明。写入 ./sth-specs/w4/codex-tool-call.md
+
+## commit history
+帮我查看codex 的所有 commit history，梳理其代码变更的脉络，必要时可以使用 mermaid chart来辅助说明。 写入./sth-specs/w4/codex-changes-by-claude.md
+
+### 了解 codex 的 apply_patch 工具
+帮我梳理./vendors/codex 的 apply_patch 工具，详细解读 apply_patch 工具的原理，如何使用，如何实现，如何测试等等。以及apply_patch 工具的代码是如何跟 codex 其他部分集成的，另外我注意到 apply_patch_tool_instructions.md 文件,这个文件是做什么的？如何跟 apply_patch crate 打交道。如果需要， 可以用mermaid chart来辅助说明。写入 ./sth-specs/w4/apply-patch.md
