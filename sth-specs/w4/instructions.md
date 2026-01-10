@@ -21,3 +21,11 @@
 # open-notebook 架构分析
 仔细阅读./vendors/open-notebook 的代码，撰写一个详细的架构分析文档，有如需图表，使用mermaid chart。文档放在:
 ./sth-specs/w4/open-notebook/arch-design.md
+
+帮我详细介绍 surrealdb 跟 worker 之间是如何交互的，撰写./sth-specs/w4/open-notebook/surrealdb-worker.md 
+
+## open-notebook 如何使用 Surrealdb
+帮我详细介绍 open-notebook 如何使用 Surrealdb，如何定义存放在 surrealdb 中的数据，如何定义图结构，app和 surrealdb 如何交互,撰写 ./sth-specs/w4/open-notebook/surrealdb.md
+
+## open-notebook 如何生成 podcast
+帮我详细介绍 open-notebook 如何生成 podcast，如何使用数据库中的数据，如何定义podcast的结构，如何生成podcast,撰写 ./sth-specs/w4/open-notebook/podcast.md,
