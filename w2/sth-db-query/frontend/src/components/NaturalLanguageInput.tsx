@@ -215,9 +215,9 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({
           <QueryResults
             columns={queryResult.columns}
             rows={queryResult.rows}
-            rowCount={queryResult.row_count}
-            executionTimeMs={queryResult.execution_time_ms}
-            truncated={queryResult.truncated}
+            rowCount={queryResult.row_count || 0}
+            executionTimeMs={queryResult.execution_time_ms || 0}
+            truncated={queryResult.truncated || false}
             loading={sqlExecutionLoading}
             query={generatedSQL}
           />

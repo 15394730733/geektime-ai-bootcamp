@@ -151,7 +151,10 @@ export const QueryResults: React.FC<QueryResultsProps> = ({
     }
   };
 
-  const formatExecutionTime = (timeMs: number): string => {
+  const formatExecutionTime = (timeMs?: number): string => {
+    if (timeMs == null) {
+      return '0ms';
+    }
     if (timeMs < 1000) {
       return `${timeMs}ms`;
     } else if (timeMs < 60000) {
@@ -176,7 +179,7 @@ export const QueryResults: React.FC<QueryResultsProps> = ({
       extra={
         <Space>
           <Text type="secondary">
-            {rowCount.toLocaleString()} rows • {formatExecutionTime(executionTimeMs)}
+            {(rowCount ?? 0).toLocaleString()} rows • {formatExecutionTime(executionTimeMs)}
           </Text>
           <Button
             icon={<CopyOutlined />}

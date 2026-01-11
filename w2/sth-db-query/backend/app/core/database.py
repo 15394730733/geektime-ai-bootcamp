@@ -1,12 +1,14 @@
 """
 Database configuration and session management.
 
-This module provides SQLAlchemy async session configuration and utilities
+This module provides SQLAlchemy session configuration and utilities
 for the SQLite database used to store connections and metadata.
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import declarative_base, DeclarativeBase
+from sqlalchemy.ext.asyncio import async_sessionmaker
+from typing import AsyncGenerator
 
 from ..core.config import settings
 
@@ -19,20 +21,30 @@ engine = create_async_engine(
 )
 
 # Create async session factory
-async_session = async_sessionmaker(engine, expire_on_commit=False)
+SessionLocal = async_sessionmaker(
+    engine, 
+    autocommit=False, 
+    autoflush=False,
+    expire_on_commit=False,
+    class_=AsyncSession
+)
+
+# Export async session for direct use
+async_session = SessionLocal
 
 
-async def get_db() -> AsyncSession:
+# Create base class for models
+Base: DeclarativeBase = declarative_base()
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency function to get database session.
 
-    Yields an async database session and ensures it's closed after use.
+    Yields a database session and ensures it's closed after use.
     """
-    async with async_session() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+    async with SessionLocal() as session:
+        yield session
 
 
 async def create_tables():
@@ -42,9 +54,9 @@ async def create_tables():
     This function should be called during application startup to ensure
     all tables are created in the SQLite database.
     """
+    # Import all models to ensure they are registered
+    from ..models import Base  # noqa: F401
     async with engine.begin() as conn:
-        # Import all models to ensure they are registered
-        from ..models import Base  # noqa: F401
         await conn.run_sync(Base.metadata.create_all)
 
 
@@ -54,6 +66,7 @@ async def drop_tables():
 
     WARNING: This will delete all data. Use with caution.
     """
+    # Import all models to ensure they are registered
+    from ..models import Base  # noqa: F401
     async with engine.begin() as conn:
-        from ..models import Base  # noqa: F401
         await conn.run_sync(Base.metadata.drop_all)

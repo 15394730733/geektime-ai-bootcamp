@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
     try:
         logger.info("Initializing application and loading startup data...")
         startup_result = await startup_service.initialize_application()
-        
+    
         if startup_result["success"]:
             logger.info("Application startup completed successfully")
             logger.info(f"Database initialized: {startup_result['database_initialized']}")

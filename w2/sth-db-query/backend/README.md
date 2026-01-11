@@ -16,7 +16,7 @@
 - **框架**: FastAPI
 - **ORM**: SQLAlchemy (异步)
 - **数据库**: SQLite (应用数据库), PostgreSQL (目标数据库)
-- **AI 服务**: GLM API (智谱清言)
+- **AI 服务**: OpenAI/DeepSeek API
 - **部署**: Docker, Docker Compose
 - **测试**: Pytest, Coverage
 - **代码质量**: Ruff, MyPy
@@ -61,30 +61,31 @@ pip install -r requirements.txt
 
 #### 环境配置
 
-创建 `.env` 文件：
+配置文件位于 `app/core/config.py`，直接编辑该文件进行相关配置：
 
-```bash
+```python
 # 数据库配置
-DATABASE_URL=sqlite+aiosqlite:///./.db_query/db_query.db
+database_url: str = "sqlite+aiosqlite:///./.db_query/db_query.db"
 
 # 服务器配置
-HOST=0.0.0.0
-PORT=8000
+HOST: str = "0.0.0.0"
+PORT: int = 8000
 
-# GLM API 配置
-GLM_API_KEY=your_glm_api_key_here
-GLM_BASE_URL=https://open.bigmodel.cn/api/paas/v4/
+# OpenAI/DeepSeek API 配置
+openai_api_key: str = "your_api_key_here"
+openai_base_url: str = "https://api.deepseek.com/v1"
+openai_model: str = "deepseek-chat"
 
 # 开发配置
-DEBUG=true
-LOG_LEVEL=INFO
+DEBUG: bool = True
+LOG_LEVEL: str = "INFO"
 
 # CORS 配置
-CORS_ORIGINS=["http://localhost:3000", "http://localhost:5173"]
+CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
 
 # 查询配置
-MAX_QUERY_RESULTS=1000
-QUERY_TIMEOUT_SECONDS=30
+max_query_results: int = 1000
+query_timeout_seconds: int = 30
 ```
 
 #### 初始化数据库

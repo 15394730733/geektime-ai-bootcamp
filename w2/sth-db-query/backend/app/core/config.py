@@ -13,23 +13,23 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Database Configuration
-    database_url: str = f"sqlite+aiosqlite:///{os.path.join(os.path.dirname(__file__), '../../.db_query/db_query.db')}"
+    database_url: str = "sqlite+aiosqlite:///./.db_query/db_query.db"
 
     # Server Configuration
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
     # OpenAI API Configuration
-    openai_api_key: str = ""
-    openai_base_url: str = "https://api.openai.com/v1"
-    openai_model: str = "gpt-3.5-turbo"
+    openai_api_key: str = "sk-ad0cdd5660c34bd684042d07c0cef2a4"
+    openai_base_url: str = "https://api.deepseek.com/v1"
+    openai_model: str = "deepseek-chat"
 
     # Development Settings
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
 
-    # CORS Settings - Allow all origins for development
-    CORS_ORIGINS: List[str] = ["*"]
+    # CORS Settings
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
