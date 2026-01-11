@@ -64,3 +64,8 @@ POST /api/v1/dbs/{name}/query/natural
 
 其他可参考
 按照 apple website 的设计风格,think ultra hard,优化 UI 和 UX。  
+
+
+## code review
+
+/speckit.analyze 仔细 review w2/sth-db_query 代码，删除不用的代码，添加更多 unit test,以及寻找opportunity

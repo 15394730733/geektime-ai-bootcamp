@@ -44,7 +44,7 @@ async def execute_natural_language_query(
     query: query_schema.NaturalLanguageQueryRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    """Execute a natural language query."""
+    """Generate SQL from natural language query without executing it."""
     try:
         # Get database metadata for context
         metadata = await database_service.get_database_metadata(db, name)
@@ -55,20 +55,12 @@ async def execute_natural_language_query(
             metadata
         )
         
-        # Execute the generated SQL
-        result = await database_service.execute_query(db, name, generated_sql)
-        
-        # Return both the generated SQL and the results
+        # Return only the generated SQL
         response_data = {
-            "generatedSql": generated_sql,
-            "columns": result["columns"],
-            "rows": result["rows"],
-            "rowCount": result["row_count"],
-            "executionTimeMs": result["execution_time_ms"],
-            "truncated": result.get("truncated", False)
+            "generatedSql": generated_sql
         }
         
-        return APIResponse.success_response("Natural language query executed successfully", response_data)
+        return APIResponse.success_response("SQL generated successfully from natural language query", response_data)
         
     except DatabaseQueryError as e:
         raise HTTPException(

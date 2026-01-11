@@ -44,8 +44,7 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({
       setQueryResult(null);
       setSqlError(null);
       const result = await onSubmit(query.trim());
-      setGeneratedSQL(result.generated_sql);
-      setQueryResult(result);
+      setGeneratedSQL(result.generatedSql);
       setIsEditingSQL(false);
     } catch (error) {
       // Error handling is done in parent component
@@ -62,11 +61,11 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({
       setSqlError(null);
       const result = await onExecuteSQL(generatedSQL);
       setQueryResult({
-        generated_sql: generatedSQL,
+        generatedSql: generatedSQL,
         columns: result.columns,
         rows: result.rows,
-        row_count: result.row_count,
-        execution_time_ms: result.execution_time_ms,
+        rowCount: result.rowCount,
+        executionTimeMs: result.executionTimeMs,
         truncated: result.truncated
       });
     } catch (error) {
@@ -215,8 +214,8 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({
           <QueryResults
             columns={queryResult.columns}
             rows={queryResult.rows}
-            rowCount={queryResult.row_count || 0}
-            executionTimeMs={queryResult.execution_time_ms || 0}
+            rowCount={queryResult.rowCount || 0}
+            executionTimeMs={queryResult.executionTimeMs || 0}
             truncated={queryResult.truncated || false}
             loading={sqlExecutionLoading}
             query={generatedSQL}

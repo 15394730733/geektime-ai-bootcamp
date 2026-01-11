@@ -66,12 +66,12 @@ export interface NaturalLanguageQueryRequest {
 }
 
 export interface NaturalLanguageQueryResult {
-  generated_sql: string;
-  columns: string[];
-  rows: any[][];
-  row_count: number;
-  execution_time_ms: number;
-  truncated: boolean;
+  generatedSql: string;
+  columns?: string[];
+  rows?: any[][];
+  rowCount?: number;
+  executionTimeMs?: number;
+  truncated?: boolean;
 }
 
 class APIClient {

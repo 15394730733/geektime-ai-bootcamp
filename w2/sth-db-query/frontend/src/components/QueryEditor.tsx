@@ -174,7 +174,6 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
             value={value}
             onChange={handleEditorChange}
             onMount={handleEditorDidMount}
-            loading="Loading editor..."
             options={{
               minimap: { enabled: false },
               scrollBeyondLastLine: false,

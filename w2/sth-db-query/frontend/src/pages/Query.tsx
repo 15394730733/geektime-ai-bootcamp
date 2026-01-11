@@ -209,22 +209,14 @@ export const QueryPage: React.FC = () => {
     try {
       const result = await apiClient.executeNaturalLanguageQuery(state.selectedDatabase, { prompt });
       
-      // Update the active tab with generated SQL and results
-      const queryResult: QueryResult = {
-        columns: result.columns,
-        rows: result.rows,
-        rowCount: result.row_count,
-        executionTimeMs: result.execution_time_ms,
-        truncated: result.truncated,
-      };
-
+      // Update the active tab with generated SQL
       setTabs(prev => prev.map(tab => 
         tab.id === activeTabId 
-          ? { ...tab, query: result.generated_sql, results: queryResult, isDirty: false }
+          ? { ...tab, query: result.generatedSql, isDirty: false }
           : tab
       ));
       
-      message.success(`Natural language query converted and executed (${result.execution_time_ms}ms)`);
+      message.success('Natural language query converted to SQL successfully');
     } catch (error: any) {
       message.error(error.message || 'Natural language query failed');
       throw error;
