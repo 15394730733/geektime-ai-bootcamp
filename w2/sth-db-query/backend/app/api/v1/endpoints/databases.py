@@ -2,6 +2,7 @@
 Database management endpoints.
 """
 
+import logging
 from typing import Union
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,7 @@ from app.schemas import database as database_schema
 from app.utils.response import APIResponse
 from app.core.errors import DatabaseQueryError, get_http_status_code
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 database_service = DatabaseService()
 
@@ -53,10 +55,10 @@ async def create_database(
         # Extract and cache metadata
         try:
             await database_service.refresh_database_metadata(db, result.url, result.id)
-            print(f"Successfully extracted metadata for database '{database.name}'")
+            logger.info(f"Successfully extracted metadata for database '{database.name}'")
         except Exception as e:
             # Log error but don't fail the database creation
-            print(f"Warning: Failed to extract metadata for database '{database.name}': {str(e)}")
+            logger.warning(f"Failed to extract metadata for database '{database.name}': {str(e)}")
 
         return APIResponse.success_response("Database created successfully", result)
 
@@ -127,10 +129,10 @@ async def create_or_update_database(
             # Extract and cache metadata
             try:
                 await database_service.refresh_database_metadata(db, result.url, result.id)
-                print(f"Successfully extracted metadata for database '{name}'")
+                logger.info(f"Successfully extracted metadata for database '{name}'")
             except Exception as e:
                 # Log error but don't fail the database creation
-                print(f"Warning: Failed to extract metadata for database '{name}': {str(e)}")
+                logger.warning(f"Failed to extract metadata for database '{name}': {str(e)}")
 
             return APIResponse.success_response("Database created successfully", result)
 
@@ -192,13 +194,13 @@ async def get_database_metadata(name: str, db: AsyncSession = Depends(get_db)):
         # If no metadata exists, try to refresh it
         if not metadata.get('tables') and not metadata.get('views'):
             try:
-                print(f"No metadata found for database '{name}', attempting to refresh...")
+                logger.info(f"No metadata found for database '{name}', attempting to refresh...")
                 await database_service.refresh_database_metadata(db, database.url, database.id)
                 # Get metadata again after refresh
                 metadata = await database_service.get_database_metadata(db, name)
-                print(f"Successfully refreshed metadata for database '{name}'")
+                logger.info(f"Successfully refreshed metadata for database '{name}'")
             except Exception as refresh_error:
-                print(f"Failed to refresh metadata for database '{name}': {str(refresh_error)}")
+                logger.warning(f"Failed to refresh metadata for database '{name}': {str(refresh_error)}")
                 # Don't fail the request, just return empty metadata
 
         return APIResponse.success_response("Database metadata retrieved successfully", metadata)

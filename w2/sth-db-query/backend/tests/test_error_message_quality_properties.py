@@ -10,13 +10,13 @@ helpful information for different types of failures.
 
 import pytest
 from hypothesis import given, strategies as st, assume
-import psycopg2
+import asyncpg
 from sqlglot.errors import ParseError, TokenError
 
 from app.core.errors import (
     DatabaseQueryError, NetworkError, AuthenticationError, ConfigurationError,
     ValidationError, SQLSyntaxError, PermissionError, TimeoutError, LLMServiceError,
-    categorize_psycopg2_error, categorize_sql_error, categorize_timeout_error,
+    categorize_asyncpg_error, categorize_sql_error, categorize_timeout_error,
     categorize_llm_error, ErrorCategory, ErrorSeverity
 )
 
@@ -79,9 +79,9 @@ class TestErrorMessageQuality:
         with appropriate user message and suggestions.
         """
         # Create a mock psycopg2 error
-        mock_error = psycopg2.OperationalError(f"Database error: {network_errors}")
-        
-        categorized = categorize_psycopg2_error(mock_error)
+        mock_error = Exception(f"Database error: {network_errors}")
+
+        categorized = categorize_asyncpg_error(mock_error)
         
         assert isinstance(categorized, NetworkError)
         assert categorized.category == ErrorCategory.NETWORK
@@ -105,9 +105,9 @@ class TestErrorMessageQuality:
         For any authentication error message, categorizing it should result in an 
         AuthenticationError with appropriate user message and suggestions.
         """
-        mock_error = psycopg2.OperationalError(f"Database error: {auth_errors}")
-        
-        categorized = categorize_psycopg2_error(mock_error)
+        mock_error = Exception(f"Database error: {auth_errors}")
+
+        categorized = categorize_asyncpg_error(mock_error)
         
         assert isinstance(categorized, AuthenticationError)
         assert categorized.category == ErrorCategory.AUTHENTICATION
@@ -133,9 +133,9 @@ class TestErrorMessageQuality:
         For any permission error message, categorizing it should result in a 
         PermissionError with appropriate user message and suggestions.
         """
-        mock_error = psycopg2.OperationalError(f"Database error: {permission_errors}")
-        
-        categorized = categorize_psycopg2_error(mock_error)
+        mock_error = Exception(f"Database error: {permission_errors}")
+
+        categorized = categorize_asyncpg_error(mock_error)
         
         assert isinstance(categorized, PermissionError)
         assert categorized.category == ErrorCategory.PERMISSION
@@ -160,9 +160,9 @@ class TestErrorMessageQuality:
         For any configuration error message, categorizing it should result in a 
         ConfigurationError with appropriate user message and suggestions.
         """
-        mock_error = psycopg2.OperationalError(f"Database error: {config_errors}")
-        
-        categorized = categorize_psycopg2_error(mock_error)
+        mock_error = Exception(f"Database error: {config_errors}")
+
+        categorized = categorize_asyncpg_error(mock_error)
         
         assert isinstance(categorized, ConfigurationError)
         assert categorized.category == ErrorCategory.CONFIGURATION

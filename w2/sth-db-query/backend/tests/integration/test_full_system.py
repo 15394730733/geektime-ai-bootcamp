@@ -11,12 +11,13 @@ import tempfile
 import os
 from pathlib import Path
 from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 import sqlite3
 
 from app.main import app
 from app.core.config import settings
 from app.services.database import DatabaseService
+from app.core.init_db import init_database
 
 
 class TestFullSystemIntegration:
@@ -32,14 +33,13 @@ class TestFullSystemIntegration:
     @pytest.fixture
     def client_with_real_db(self, temp_db_path):
         """Create test client with real SQLite database."""
-        with patch.object(settings, 'database_url', f"sqlite:///{temp_db_path}"):
-            
+        with patch.object(settings, 'database_url', f"sqlite+aiosqlite:///{temp_db_path}"):
+
             client = TestClient(app)
-            
-            # Initialize database
-            db_service = DatabaseService()
-            db_service.init_db()
-            
+
+            # Initialize database using async function
+            asyncio.run(init_database())
+
             yield client
 
     @pytest.fixture
@@ -72,8 +72,8 @@ class TestFullSystemIntegration:
 
     def test_complete_system_workflow(self, client_with_real_db, mock_postgres_connection, temp_db_path):
         """Test complete system workflow with database persistence."""
-        
-        with patch('psycopg2.connect', return_value=mock_postgres_connection):
+
+        with patch('asyncpg.connect', return_value=mock_postgres_connection):
             client = client_with_real_db
             
             # Step 1: Verify empty system

@@ -1,16 +1,19 @@
 """
-Database connection service layer with validation.
+Database connection service layer with validation using asyncpg.
 """
 
+import asyncio
+import logging
 import re
-import psycopg2
-import psycopg2.extras
+import asyncpg
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 from urllib.parse import urlparse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import time
+
+logger = logging.getLogger(__name__)
 
 from app.crud.database import (
     get_databases, get_database, create_database, update_database, delete_database,
@@ -22,8 +25,9 @@ from app.schemas.database import DatabaseCreate, DatabaseUpdate, Database
 from app.core.security import validate_and_sanitize_sql
 from app.core.errors import (
     DatabaseQueryError, NetworkError, AuthenticationError, ConfigurationError,
-    ValidationError, TimeoutError, categorize_psycopg2_error, categorize_timeout_error
+    ValidationError, TimeoutError, categorize_asyncpg_error, categorize_timeout_error
 )
+from app.core.connection_pool import connection_pool_manager
 
 # Alias for backward compatibility
 DatabaseServiceError = DatabaseQueryError
@@ -80,40 +84,23 @@ class DatabaseService:
         # Validate the database data
         await self._validate_database_data(db, database_data, exclude_name=name)
 
-        # Get existing connection to check if URL changed
+        # Get existing connection
         existing = await get_database(db, name)
         if not existing:
             return None
-            
-        url_changed = existing.url != database_data.url
 
-        # Test the connection if URL changed
-        if url_changed:
-            connection_test = await self._test_connection(database_data.url)
-            if not connection_test["success"]:
-                error_info = connection_test.get("error_info")
-                if error_info and isinstance(error_info, DatabaseQueryError):
-                    raise error_info
-                else:
-                    raise NetworkError(
-                        message=f"Database connection test failed: {connection_test['message']}",
-                        technical_details=connection_test.get('error', '')
-                    )
+        # Check if URL changed and test connection if needed
+        url_changed = existing.url != database_data.url
+        await self._validate_connection_if_changed(database_data.url, url_changed, existing.url)
 
         # Update the database connection
         connection = await update_database(db, name, database_data)
         if not connection:
             return None
-            
+
         # Refresh metadata if URL changed to ensure metadata persistence
-        if url_changed:
-            try:
-                await self.refresh_database_metadata(db, connection.url, connection.id)
-            except Exception as e:
-                # Log warning but don't fail the update
-                # In a production system, you'd use proper logging
-                print(f"Warning: Failed to refresh metadata after database update for '{name}': {str(e)}")
-        
+        await self._refresh_metadata_if_url_changed(db, connection, url_changed, name)
+
         return Database.model_validate(connection)
 
     async def update_database_partial(self, db: AsyncSession, name: str, update_data: DatabaseUpdate) -> Optional[Database]:
@@ -123,15 +110,38 @@ class DatabaseService:
         if not existing:
             return None
 
-        # Only validate and test connection if URL is being changed
-        url_changed = False
-        if update_data.url is not None and existing.url != update_data.url:
-            url_changed = True
-            # Validate URL format
+        # Determine if URL is changing
+        url_changed = update_data.url is not None and existing.url != update_data.url
+
+        # Validate URL if it's changing
+        if url_changed:
             self._validate_url_format(update_data.url)
-            
-            # Test the new connection
-            connection_test = await self._test_connection(update_data.url)
+            await self._validate_connection_if_changed(update_data.url, url_changed, existing.url)
+
+        # Create a full DatabaseCreate object for the update
+        full_update_data = DatabaseCreate(
+            name=existing.name,
+            url=update_data.url if update_data.url is not None else existing.url,
+            description=update_data.description if update_data.description is not None else existing.description
+        )
+
+        # Use the main update method
+        return await self.update_database(db, name, full_update_data)
+
+    async def _validate_connection_if_changed(self, new_url: str, url_changed: bool, old_url: str):
+        """
+        Validate and test connection if URL has changed.
+
+        Args:
+            new_url: New database URL
+            url_changed: Whether the URL has changed
+            old_url: Old database URL for logging
+
+        Raises:
+            NetworkError: If connection test fails
+        """
+        if url_changed:
+            connection_test = await self._test_connection(new_url)
             if not connection_test["success"]:
                 error_info = connection_test.get("error_info")
                 if error_info and isinstance(error_info, DatabaseQueryError):
@@ -142,15 +152,22 @@ class DatabaseService:
                         technical_details=connection_test.get('error', '')
                     )
 
-        # Create a full DatabaseCreate object for the existing update method
-        full_update_data = DatabaseCreate(
-            name=existing.name,  # Keep existing name
-            url=update_data.url if update_data.url is not None else existing.url,
-            description=update_data.description if update_data.description is not None else existing.description
-        )
+    async def _refresh_metadata_if_url_changed(self, db: AsyncSession, connection, url_changed: bool, name: str):
+        """
+        Refresh metadata if URL changed to ensure metadata persistence.
 
-        # Use existing update method
-        return await self.update_database(db, name, full_update_data)
+        Args:
+            db: Database session
+            connection: Database connection object
+            url_changed: Whether the URL has changed
+            name: Database name for logging
+        """
+        if url_changed:
+            try:
+                await self.refresh_database_metadata(db, connection.url, connection.id)
+            except Exception as e:
+                # Log warning but don't fail the update
+                logger.warning(f"Failed to refresh metadata after database update for '{name}': {str(e)}")
 
     async def delete_database(self, db: AsyncSession, name: str) -> bool:
         """Delete a database connection."""
@@ -251,28 +268,6 @@ class DatabaseService:
             
         except Exception as e:
             raise DatabaseServiceError(f"Failed to force metadata refresh for '{name}': {str(e)}")
-        """Get the current connection status for a database."""
-        try:
-            database_conn = await self.get_database(db, name)
-            if not database_conn:
-                raise DatabaseServiceError(f"Database '{name}' not found")
-            
-            # Test the actual connection
-            connection_test = await self._test_connection(database_conn.url)
-            
-            # Update the stored status based on the test result
-            if connection_test["success"] != database_conn.is_active:
-                await self.update_connection_status(db, name, connection_test["success"])
-                database_conn.is_active = connection_test["success"]
-            
-            return {
-                "name": database_conn.name,
-                "is_active": database_conn.is_active,
-                "last_tested": datetime.utcnow().isoformat(),
-                "connection_test": connection_test
-            }
-        except Exception as e:
-            raise DatabaseServiceError(f"Failed to get connection status: {str(e)}")
 
     async def _validate_database_data(self, db: AsyncSession, data: DatabaseCreate, exclude_name: Optional[str] = None):
         """Validate database connection data."""
@@ -412,82 +407,46 @@ class DatabaseService:
             )
 
     async def _test_connection(self, url: str) -> Dict[str, Any]:
-        """Test database connection with optimized performance."""
+        """Test database connection using async connection pool."""
         try:
             self._validate_url_format(url)
 
-            # Actually test the database connection
-            import time
-            import asyncio
             start_time = time.time()
 
-            # Parse URL and test connection
-            parsed = urlparse(url)
-            host = parsed.hostname
-            port = parsed.port or 5432
-            database = parsed.path.lstrip('/')
-            username = parsed.username
-            password = parsed.password
-
-            # Test connection with shorter timeout and run in thread pool to avoid blocking
-            import psycopg2
-            
-            def sync_test_connection():
-                """Synchronous connection test to run in thread pool."""
-                try:
-                    conn = psycopg2.connect(
-                        host=host,
-                        port=port,
-                        database=database,
-                        user=username,
-                        password=password,
-                        connect_timeout=3  # Reduced to 3 seconds for faster feedback
-                    )
-                    conn.close()
-                    return True, None
-                except Exception as e:
-                    return False, e
-            
-            # Run the connection test in a thread pool to avoid blocking the event loop
+            # Use async connection pool to test connection
             try:
-                loop = asyncio.get_event_loop()
-                success, error = await loop.run_in_executor(None, sync_test_connection)
-                
+                conn = await connection_pool_manager.get_connection(url)
+                # Test the connection with a simple query
+                await conn.fetchval("SELECT 1")
+
+                # Return connection to pool
+                await connection_pool_manager.return_connection(url, conn)
+
                 latency_ms = int((time.time() - start_time) * 1000)
-                
-                if success:
-                    return {
-                        "success": True,
-                        "message": "Database connection successful",
-                        "latency_ms": latency_ms
-                    }
-                else:
-                    # Handle the error
-                    if isinstance(error, psycopg2.OperationalError):
-                        categorized_error = categorize_psycopg2_error(error)
-                        return {
-                            "success": False,
-                            "message": categorized_error.user_message,
-                            "error": str(error),
-                            "error_info": categorized_error,
-                            "latency_ms": latency_ms
-                        }
-                    else:
-                        return {
-                            "success": False,
-                            "message": f"Connection failed: {str(error)}",
-                            "error": str(error),
-                            "latency_ms": latency_ms
-                        }
-                        
-            except asyncio.TimeoutError:
+
+                return {
+                    "success": True,
+                    "message": "Database connection successful",
+                    "latency_ms": latency_ms
+                }
+
+            except asyncpg.PostgresConnectionError as e:
+                categorized_error = categorize_asyncpg_error(e)
                 return {
                     "success": False,
-                    "message": "Connection test timed out",
-                    "error": "Connection timeout after 3 seconds",
+                    "message": categorized_error.user_message,
+                    "error": str(e),
+                    "error_info": categorized_error,
                     "latency_ms": int((time.time() - start_time) * 1000)
                 }
-                
+            except Exception as e:
+                return {
+                    "success": False,
+                    "message": f"Connection failed: {str(e)}",
+                    "error": str(e),
+                    "latency_ms": int((time.time() - start_time) * 1000)
+                }
+
         except DatabaseQueryError as e:
             return {
                 "success": False,
@@ -567,149 +526,131 @@ class DatabaseService:
         except Exception as e:
             raise DatabaseServiceError(f"Failed to refresh database metadata: {str(e)}")
 
-    def _extract_database_metadata(self, database_url: str, connection_id: str) -> List[Dict[str, Any]]:
-        """Extract metadata from PostgreSQL database."""
+    async def _extract_database_metadata(self, database_url: str, connection_id: str) -> List[Dict[str, Any]]:
+        """Extract metadata from PostgreSQL database using async connection pool."""
         try:
-            # Parse database URL to get connection parameters
-            parsed = urlparse(database_url)
-            host = parsed.hostname
-            port = parsed.port or 5432
-            database = parsed.path.lstrip('/')
-            username = parsed.username
-            password = parsed.password
-
-            # Connect to PostgreSQL
-            conn = psycopg2.connect(
-                host=host,
-                port=port,
-                database=database,
-                user=username,
-                password=password
-            )
+            # Get connection from pool
+            conn = await connection_pool_manager.get_connection(database_url)
 
             try:
                 metadata_list = []
 
                 # Get tables
-                with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cursor:
-                    cursor.execute("""
+                tables_query = """
+                    SELECT
+                        schemaname as schema_name,
+                        tablename as table_name
+                    FROM pg_tables
+                    WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+                    ORDER BY schemaname, tablename
+                """
+                tables = await conn.fetch(tables_query)
+
+                for table in tables:
+                    schema_name = table['schema_name']
+                    table_name = table['table_name']
+
+                    # Get columns for this table
+                    columns_query = """
                         SELECT
-                            schemaname as schema_name,
-                            tablename as table_name
-                        FROM pg_tables
-                        WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
-                        ORDER BY schemaname, tablename
-                    """)
+                            c.column_name,
+                            c.data_type,
+                            c.is_nullable = 'YES' as is_nullable,
+                            COALESCE(pk.column_name IS NOT NULL, false) as is_primary_key,
+                            c.column_default as default_value
+                        FROM information_schema.columns c
+                        LEFT JOIN (
+                            SELECT ku.column_name
+                            FROM information_schema.table_constraints tc
+                            JOIN information_schema.key_column_usage ku
+                                ON tc.constraint_name = ku.constraint_name
+                            WHERE tc.constraint_type = 'PRIMARY KEY'
+                                AND tc.table_schema = $1
+                                AND tc.table_name = $2
+                        ) pk ON c.column_name = pk.column_name
+                        WHERE c.table_schema = $1
+                            AND c.table_name = $2
+                        ORDER BY c.ordinal_position
+                    """
+                    columns = await conn.fetch(columns_query, schema_name, table_name)
 
-                    tables = cursor.fetchall()
-
-                    for table in tables:
-                        schema_name = table['schema_name']
-                        table_name = table['table_name']
-
-                        # Get columns for this table
-                        cursor.execute("""
-                            SELECT
-                                c.column_name,
-                                c.data_type,
-                                c.is_nullable = 'YES' as is_nullable,
-                                CASE WHEN pk.column_name IS NOT NULL THEN true ELSE false END as is_primary_key,
-                                c.column_default as default_value
-                            FROM information_schema.columns c
-                            LEFT JOIN (
-                                SELECT ku.column_name
-                                FROM information_schema.table_constraints tc
-                                JOIN information_schema.key_column_usage ku
-                                    ON tc.constraint_name = ku.constraint_name
-                                WHERE tc.constraint_type = 'PRIMARY KEY'
-                                    AND tc.table_schema = %s
-                                    AND tc.table_name = %s
-                            ) pk ON c.column_name = pk.column_name
-                            WHERE c.table_schema = %s
-                                AND c.table_name = %s
-                            ORDER BY c.ordinal_position
-                        """, (schema_name, table_name, schema_name, table_name))
-
-                        columns = cursor.fetchall()
-
-                        column_list = []
-                        for col in columns:
-                            column_list.append({
-                                "name": col['column_name'],
-                                "data_type": col['data_type'],
-                                "is_nullable": col['is_nullable'],
-                                "is_primary_key": col['is_primary_key'],
-                                "default_value": col['default_value']
-                            })
-
-                        metadata_list.append({
-                            "connection_id": connection_id,
-                            "object_type": "table",
-                            "schema_name": schema_name,
-                            "object_name": table_name,
-                            "columns": column_list
+                    column_list = []
+                    for col in columns:
+                        column_list.append({
+                            "name": col['column_name'],
+                            "data_type": col['data_type'],
+                            "is_nullable": col['is_nullable'],
+                            "is_primary_key": col['is_primary_key'],
+                            "default_value": col['default_value']
                         })
 
-                    # Get views
-                    cursor.execute("""
+                    metadata_list.append({
+                        "connection_id": connection_id,
+                        "object_type": "table",
+                        "schema_name": schema_name,
+                        "object_name": table_name,
+                        "columns": column_list
+                    })
+
+                # Get views
+                views_query = """
+                    SELECT
+                        schemaname as schema_name,
+                        viewname as view_name
+                    FROM pg_views
+                    WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+                    ORDER BY schemaname, viewname
+                """
+                views = await conn.fetch(views_query)
+
+                for view in views:
+                    schema_name = view['schema_name']
+                    view_name = view['view_name']
+
+                    # Get columns for this view (similar to tables)
+                    columns_query = """
                         SELECT
-                            schemaname as schema_name,
-                            viewname as view_name
-                        FROM pg_views
-                        WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
-                        ORDER BY schemaname, viewname
-                    """)
+                            column_name,
+                            data_type,
+                            is_nullable = 'YES' as is_nullable,
+                            false as is_primary_key,
+                            NULL::text as default_value
+                        FROM information_schema.columns
+                        WHERE table_schema = $1
+                            AND table_name = $2
+                        ORDER BY ordinal_position
+                    """
+                    columns = await conn.fetch(columns_query, schema_name, view_name)
 
-                    views = cursor.fetchall()
-
-                    for view in views:
-                        schema_name = view['schema_name']
-                        view_name = view['view_name']
-
-                        # Get columns for this view (similar to tables)
-                        cursor.execute("""
-                            SELECT
-                                column_name,
-                                data_type,
-                                is_nullable = 'YES' as is_nullable,
-                                false as is_primary_key,  -- Views don't have primary keys
-                                NULL as default_value
-                            FROM information_schema.columns
-                            WHERE table_schema = %s
-                                AND table_name = %s
-                            ORDER BY ordinal_position
-                        """, (schema_name, view_name))
-
-                        columns = cursor.fetchall()
-
-                        column_list = []
-                        for col in columns:
-                            column_list.append({
-                                "name": col['column_name'],
-                                "data_type": col['data_type'],
-                                "is_nullable": col['is_nullable'],
-                                "is_primary_key": col['is_primary_key'],
-                                "default_value": col['default_value']
-                            })
-
-                        metadata_list.append({
-                            "connection_id": connection_id,
-                            "object_type": "view",
-                            "schema_name": schema_name,
-                            "object_name": view_name,
-                            "columns": column_list
+                    column_list = []
+                    for col in columns:
+                        column_list.append({
+                            "name": col['column_name'],
+                            "data_type": col['data_type'],
+                            "is_nullable": col['is_nullable'],
+                            "is_primary_key": col['is_primary_key'],
+                            "default_value": col['default_value']
                         })
+
+                    metadata_list.append({
+                        "connection_id": connection_id,
+                        "object_type": "view",
+                        "schema_name": schema_name,
+                        "object_name": view_name,
+                        "columns": column_list
+                    })
 
                 return metadata_list
 
             finally:
-                conn.close()
+                # Return connection to pool instead of closing
+                await connection_pool_manager.return_connection(database_url, conn)
 
         except Exception as e:
             raise DatabaseServiceError(f"Failed to extract database metadata: {str(e)}")
 
     async def execute_query(self, db: AsyncSession, database_name: str, sql: str, max_rows: int = 1000, timeout_seconds: int = 30) -> Dict[str, Any]:
-        """Execute a SQL query against the specified database with timeout handling."""
+        """Execute a SQL query against the specified database with timeout handling using async connection pool."""
         try:
             # Get the database connection
             database_conn = await self.get_database(db, database_name)
@@ -724,72 +665,64 @@ class DatabaseService:
                     ]
                 )
 
-            # Parse database URL
-            parsed = urlparse(database_conn.url)
-            host = parsed.hostname
-            port = parsed.port or 5432
-            database = parsed.path.lstrip('/')
-            username = parsed.username
-            password = parsed.password
-
-            import time
             start_time = time.time()
 
-            # Connect to PostgreSQL and execute query with timeout
+            # Get connection from pool instead of creating new one
+            conn = await connection_pool_manager.get_connection(database_conn.url)
+
             try:
-                conn = psycopg2.connect(
-                    host=host,
-                    port=port,
-                    database=database,
-                    user=username,
-                    password=password,
-                    connect_timeout=10  # Connection timeout
-                )
+                # Set statement timeout for the query
+                await conn.execute(f"SET statement_timeout = {timeout_seconds * 1000}")  # Convert to milliseconds
 
-                try:
-                    cursor = conn.cursor()
-                    
-                    # Set statement timeout for the query
-                    cursor.execute(f"SET statement_timeout = {timeout_seconds * 1000}")  # Convert to milliseconds
+                # Execute the query and fetch results
+                sql_upper = sql.strip().upper()
+                if sql_upper.startswith('SELECT') or sql_upper.startswith('WITH'):
+                    # For SELECT queries, use fetch
+                    rows = await conn.fetch(sql)
+                    columns = list(rows[0].keys()) if rows else []
+                    row_count = len(rows)
 
-                    # Execute the query
-                    cursor.execute(sql)
+                    # Convert Record objects to dicts
+                    rows_list = [dict(row) for row in rows]
 
-                    # Get column names
-                    columns = [desc[0] for desc in cursor.description] if cursor.description else []
-
-                    # Fetch all rows (with limit)
-                    rows = cursor.fetchall()
-                    truncated = len(rows) > max_rows
-
+                    # Check if we need to truncate
+                    truncated = row_count > max_rows
                     if truncated:
-                        rows = rows[:max_rows]
-
-                    # Convert rows to list of lists (JSON serializable)
-                    rows = [list(row) for row in rows]
-
-                    execution_time_ms = int((time.time() - start_time) * 1000)
-
-                    return {
-                        "columns": columns,
-                        "rows": rows,
-                        "row_count": len(rows),
-                        "execution_time_ms": execution_time_ms,
-                        "truncated": truncated
-                    }
-
-                finally:
-                    conn.close()
-
-            except psycopg2.OperationalError as e:
-                error_msg = str(e).lower()
-                if 'timeout' in error_msg or 'canceling statement due to statement timeout' in error_msg:
-                    raise categorize_timeout_error("Query execution", timeout_seconds)
+                        rows_list = rows_list[:max_rows]
+                        row_count = max_rows
                 else:
-                    raise categorize_psycopg2_error(e)
-            
-            except psycopg2.Error as e:
-                raise categorize_psycopg2_error(e)
+                    # For non-SELECT queries, use execute
+                    result = await conn.execute(sql)
+                    columns = []
+                    rows_list = []
+                    row_count = 0
+                    truncated = False
+
+                    # Parse result string to get affected row count
+                    if result:
+                        parts = result.split()
+                        if len(parts) >= 2 and parts[1].isdigit():
+                            row_count = int(parts[1])
+
+                execution_time_ms = int((time.time() - start_time) * 1000)
+
+                return {
+                    "columns": columns,
+                    "rows": rows_list,
+                    "row_count": row_count,
+                    "execution_time_ms": execution_time_ms,
+                    "truncated": truncated
+                }
+
+            except asyncpg.QueryCanceledError:
+                raise categorize_timeout_error("Query execution", timeout_seconds)
+
+            except asyncpg.PostgresError as e:
+                raise categorize_asyncpg_error(e)
+
+            finally:
+                # Return connection to pool instead of closing
+                await connection_pool_manager.return_connection(database_conn.url, conn)
 
         except DatabaseQueryError:
             raise

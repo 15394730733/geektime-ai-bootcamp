@@ -9,7 +9,7 @@ import re
 from enum import Enum
 from typing import Any, Dict, Optional, Union
 from pydantic import BaseModel
-import psycopg2
+import asyncpg
 from sqlglot.errors import ParseError, TokenError
 
 
@@ -281,15 +281,16 @@ class LLMServiceError(DatabaseQueryError):
         )
 
 
-def categorize_psycopg2_error(error: psycopg2.Error) -> DatabaseQueryError:
-    """Categorize psycopg2 errors into appropriate error types."""
-    
+def categorize_asyncpg_error(error: asyncpg.PostgresError) -> DatabaseQueryError:
+    """Categorize asyncpg errors into appropriate error types."""
+
     error_msg = str(error).lower()
-    
+
     # Network errors
     if any(keyword in error_msg for keyword in [
         'connection refused', 'network is unreachable', 'timeout',
-        'host is unreachable', 'no route to host', 'connection timed out'
+        'host is unreachable', 'no route to host', 'connection timed out',
+        'broken pipe', 'connection reset'
     ]):
         return NetworkError(
             message=f"Database connection failed: {str(error)}",
@@ -302,11 +303,11 @@ def categorize_psycopg2_error(error: psycopg2.Error) -> DatabaseQueryError:
             ],
             technical_details=str(error)
         )
-    
+
     # Authentication errors
     if any(keyword in error_msg for keyword in [
         'authentication failed', 'password authentication failed',
-        'role does not exist', 'invalid authorization'
+        'role does not exist', 'invalid authorization', 'password error'
     ]):
         return AuthenticationError(
             message=f"Database authentication failed: {str(error)}",
@@ -318,11 +319,11 @@ def categorize_psycopg2_error(error: psycopg2.Error) -> DatabaseQueryError:
             ],
             technical_details=str(error)
         )
-    
+
     # Permission errors
     if any(keyword in error_msg for keyword in [
         'permission denied', 'insufficient privilege', 'access denied',
-        'must be owner', 'must have'
+        'must be owner', 'must have', 'privilege'
     ]):
         return PermissionError(
             message=f"Database permission denied: {str(error)}",
@@ -334,11 +335,11 @@ def categorize_psycopg2_error(error: psycopg2.Error) -> DatabaseQueryError:
             ],
             technical_details=str(error)
         )
-    
+
     # Configuration errors
     if any(keyword in error_msg for keyword in [
         'database does not exist', 'relation does not exist',
-        'column does not exist', 'invalid database name'
+        'column does not exist', 'invalid database name', 'table does not exist'
     ]):
         return ConfigurationError(
             message=f"Database configuration error: {str(error)}",
@@ -350,7 +351,7 @@ def categorize_psycopg2_error(error: psycopg2.Error) -> DatabaseQueryError:
             ],
             technical_details=str(error)
         )
-    
+
     # Default to internal error
     return DatabaseQueryError(
         message=f"Database operation failed: {str(error)}",
@@ -358,6 +359,11 @@ def categorize_psycopg2_error(error: psycopg2.Error) -> DatabaseQueryError:
         user_message="An unexpected database error occurred. Please try again or contact support.",
         technical_details=str(error)
     )
+
+
+def categorize_psycopg2_error(error) -> DatabaseQueryError:
+    """Legacy wrapper for psycopg2 errors - redirects to asyncpg error categorization."""
+    return categorize_asyncpg_error(error)
 
 
 def categorize_sql_error(error: Union[ParseError, TokenError], sql: str = "") -> SQLSyntaxError:

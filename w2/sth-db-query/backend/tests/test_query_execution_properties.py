@@ -9,7 +9,7 @@ from hypothesis import given, strategies as st, settings
 import pytest
 from unittest.mock import MagicMock, patch
 import asyncio
-import psycopg2
+import asyncpg
 
 from app.services.query import QueryService, QueryExecutionError
 from app.core.errors import ValidationError, SQLSyntaxError
@@ -49,12 +49,12 @@ class TestQueryExecutionProperties:
         
         # Create appropriate error based on type
         error_map = {
-            "OperationalError": psycopg2.OperationalError("Connection failed"),
-            "ProgrammingError": psycopg2.ProgrammingError("Syntax error in query"),
-            "DataError": psycopg2.DataError("Invalid data type"),
-            "IntegrityError": psycopg2.IntegrityError("Constraint violation"),
-            "InternalError": psycopg2.InternalError("Internal database error"),
-            "InterfaceError": psycopg2.InterfaceError("Interface error"),
+            "OperationalError": asyncpg.PostgresConnectionError("Connection failed"),
+            "ProgrammingError": asyncpg.exceptions.PostgresSyntaxError("Syntax error in query"),
+            "DataError": asyncpg.exceptions.DataError("Invalid data type"),
+            "IntegrityError": asyncpg.exceptions.UniqueViolationError("Constraint violation"),
+            "InternalError": asyncpg.exceptions.InternalServerErrorError("Internal database error"),
+            "InterfaceError": asyncpg.exceptions.InterfaceError("Interface error"),
             "GenericError": Exception("Generic database error")
         }
         
@@ -83,7 +83,7 @@ class TestQueryExecutionProperties:
                     assert isinstance(error.details, dict)
                     
                     # Should categorize the error type
-                    if isinstance(error_instance, psycopg2.Error):
+                    if isinstance(error_instance, asyncpg.exceptions.PostgresError):
                         assert error.details.get('type') == 'database_error'
                     elif isinstance(error_instance, asyncio.TimeoutError):
                         assert error.details.get('type') == 'timeout_error'
@@ -255,7 +255,7 @@ class TestQueryExecutionProperties:
             mock_database_conn = MagicMock()
             mock_database_conn.url = "postgresql://user:pass@localhost:5432/testdb"
             
-            connection_error = psycopg2.OperationalError(connection_error_type)
+            connection_error = asyncpg.exceptions.PostgresConnectionError(connection_error_type)
             
             with patch.object(query_service.database_service, 'get_database', return_value=mock_database_conn):
                 with patch.object(query_service, '_execute_with_timeout', side_effect=connection_error):

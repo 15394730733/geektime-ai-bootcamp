@@ -5,7 +5,7 @@ Application configuration settings.
 import os
 from typing import List
 from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
 
 
@@ -19,10 +19,10 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    # OpenAI API Configuration
-    openai_api_key: str = "sk-ad0cdd5660c34bd684042d07c0cef2a4"
-    openai_base_url: str = "https://api.deepseek.com/v1"
-    openai_model: str = "deepseek-chat"
+    # OpenAI API Configuration - Read from environment variables
+    openai_api_key: str = Field(default="", env="OPENAI_API_KEY")
+    openai_base_url: str = Field(default="https://api.openai.com/v1", env="OPENAI_BASE_URL")
+    openai_model: str = Field(default="gpt-4", env="OPENAI_MODEL")
 
     # Development Settings
     DEBUG: bool = True
@@ -30,6 +30,13 @@ class Settings(BaseSettings):
 
     # CORS Settings
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
@@ -50,9 +57,6 @@ class Settings(BaseSettings):
     max_query_results: int = 1000
     query_timeout_seconds: int = 30
 
-    model_config = {
-        "case_sensitive": False,
-    }
 
 
 # Global settings instance
