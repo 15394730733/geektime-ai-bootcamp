@@ -10,12 +10,9 @@ import { PlayCircleOutlined, ClearOutlined, CodeOutlined, MessageOutlined } from
 import Editor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 
-// Configure monaco-editor to use local resources instead of CDN
-Editor.defaultProps = {
-  ...Editor.defaultProps,
-  loader: () => {
-    return Promise.resolve(monaco);
-  },
+// Create a loader function that returns the local monaco instance
+const loader = () => {
+  return Promise.resolve(monaco);
 };
 
 interface QueryEditorProps {
@@ -182,6 +179,7 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
             value={value}
             onChange={handleEditorChange}
             onMount={handleEditorDidMount}
+            loader={loader}
             options={{
               minimap: { enabled: false },
               scrollBeyondLastLine: false,

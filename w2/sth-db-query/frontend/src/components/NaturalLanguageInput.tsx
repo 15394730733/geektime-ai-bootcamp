@@ -8,9 +8,15 @@ import React, { useState } from 'react';
 import { Card, Input, Button, Space, Typography, Divider } from 'antd';
 import { SendOutlined, LoadingOutlined, PlayCircleOutlined, EditOutlined } from '@ant-design/icons';
 import Editor from '@monaco-editor/react';
+import * as monaco from 'monaco-editor';
 import { QueryResults } from './QueryResults';
 import { CompactErrorDisplay } from './ErrorDisplay';
 import { NaturalLanguageQueryResult } from '../services/api';
+
+// Create a loader function that returns local monaco instance
+const loader = () => {
+  return Promise.resolve(monaco);
+};
 
 const { TextArea } = Input;
 const { Text, Title } = Typography;
@@ -165,6 +171,7 @@ export const NaturalLanguageInput: React.FC<NaturalLanguageInputProps> = ({
                 language="sql"
                 value={generatedSQL}
                 onChange={handleSQLChange}
+                loader={loader}
                 options={{
                   minimap: { enabled: false },
                   scrollBeyondLastLine: false,
