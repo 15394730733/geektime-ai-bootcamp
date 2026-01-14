@@ -47,6 +47,7 @@ class DatabaseCreate(DatabaseBase):
 
 class DatabaseUpdate(BaseModel):
     """Schema for updating a database connection."""
+    name: Optional[str] = Field(None, min_length=1, max_length=50, pattern=r'^[a-zA-Z0-9_-]+$')
     url: Optional[str] = None
     description: Optional[str] = Field(None, max_length=200)
 
@@ -68,6 +69,17 @@ class DatabaseUpdate(BaseModel):
         if not match:
             raise ValueError('Invalid PostgreSQL URL format. Expected: postgresql://user:pass@host:port/database')
 
+        return v
+
+    @field_validator('name')
+    @classmethod
+    def validate_name_format(cls, v: Optional[str]) -> Optional[str]:
+        """Validate database name format."""
+        if v is None:
+            return v
+        
+        if not re.match(r'^[a-zA-Z0-9_-]+$', v):
+            raise ValueError('Name must contain only alphanumeric characters, hyphens, and underscores')
         return v
 
 

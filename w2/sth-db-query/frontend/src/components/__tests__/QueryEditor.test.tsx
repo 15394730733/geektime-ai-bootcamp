@@ -8,34 +8,6 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryEditor } from '../QueryEditor';
 
-// Mock Monaco Editor
-vi.mock('@monaco-editor/react', () => ({
-  default: ({ value, onChange, onMount, ...props }: any) => {
-    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      onChange?.(e.target.value);
-    };
-
-    React.useEffect(() => {
-      if (onMount) {
-        const mockEditor = {
-          focus: vi.fn(),
-          addCommand: vi.fn(),
-        };
-        onMount(mockEditor);
-      }
-    }, [onMount]);
-
-    return (
-      <textarea
-        data-testid="monaco-editor"
-        value={value}
-        onChange={handleChange}
-        {...props}
-      />
-    );
-  },
-}));
-
 // Mock monaco-editor
 vi.mock('monaco-editor', () => ({
   languages: {
@@ -46,6 +18,45 @@ vi.mock('monaco-editor', () => ({
   },
   KeyCode: {
     Enter: 3,
+  },
+  editor: {
+    EditorOption: {
+      readOnly: 'readOnly',
+    },
+  },
+}));
+
+// Mock Monaco Editor
+vi.mock('@monaco-editor/react', () => ({
+  default: ({ value, onChange, onMount, options, ...props }: any) => {
+    const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      onChange?.(e.target.value);
+    };
+
+    React.useEffect(() => {
+      if (onMount) {
+        const mockEditor = {
+          focus: vi.fn(),
+          addCommand: vi.fn(),
+          getOption: vi.fn((option) => {
+            if (option === 'readOnly') {
+              return options?.readOnly || false;
+            }
+            return undefined;
+          }),
+        };
+        onMount(mockEditor);
+      }
+    }, [onMount, options]);
+
+    return (
+      <textarea
+        data-testid="monaco-editor"
+        value={value}
+        onChange={handleChange}
+        {...props}
+      />
+    );
   },
 }));
 
@@ -66,7 +77,7 @@ describe('QueryEditor Component', () => {
       />
     );
 
-    expect(screen.getByText('SQL Query')).toBeInTheDocument();
+    expect(screen.getByText('SQL')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /clear/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /execute/i })).toBeInTheDocument();
     expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
@@ -201,7 +212,7 @@ describe('QueryEditor Component', () => {
     expect(editor).toHaveValue('');
   });
 
-  it('renders with SQL Query title', () => {
+  it('renders the query mode segmented control', () => {
     render(
       <QueryEditor
         value=""
@@ -210,7 +221,9 @@ describe('QueryEditor Component', () => {
       />
     );
 
-    expect(screen.getByText('SQL Query')).toBeInTheDocument();
+    // Check that the segmented control with SQL and Natural Language options exists
+    expect(screen.getByText('SQL')).toBeInTheDocument();
+    expect(screen.getByText('Natural Language')).toBeInTheDocument();
   });
 
   it('has proper button icons', () => {

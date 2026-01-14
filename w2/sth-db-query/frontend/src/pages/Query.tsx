@@ -72,23 +72,25 @@ export const QueryPage: React.FC = () => {
   // Filter active databases
   const activeDatabases = state.databases.filter(db => db.isActive);
 
-  // Auto-select database from URL parameter (only on mount or when URL changes)
+  // Auto-select database from URL parameter
   useEffect(() => {
     const dbParam = searchParams.get('db');
     console.log('URL param useEffect triggered. dbParam:', dbParam, 'current:', state.selectedDatabase);
+    console.log('Active databases:', activeDatabases.map(db => db.name));
     
-    // Only auto-select if:
-    // 1. There's a db parameter in URL
-    // 2. No database is currently selected (initial load)
-    // 3. The database exists in the list
-    if (dbParam && !state.selectedDatabase) {
+    // Always update database selection when URL param changes,
+    // even if a database is already selected
+    if (dbParam) {
       const dbExists = activeDatabases.some(db => db.name === dbParam);
+      console.log('Database exists:', dbExists);
       if (dbExists) {
-        console.log('Auto-selecting database from URL:', dbParam);
+        console.log('Setting database from URL:', dbParam);
         actions.selectDatabase(dbParam);
+      } else {
+        console.log('Database not found:', dbParam);
       }
     }
-  }, [searchParams, activeDatabases]); // Removed state.selectedDatabase from dependencies!
+  }, [searchParams, activeDatabases, actions]);
 
   // Save layout preferences when they change
   useEffect(() => {
@@ -172,9 +174,9 @@ export const QueryPage: React.FC = () => {
       const queryResult: QueryResult = {
         columns: result.columns,
         rows: result.rows,
-        rowCount: result.row_count,
-        executionTimeMs: result.execution_time_ms,
-        truncated: result.truncated,
+        rowCount: result.rowCount,
+        executionTimeMs: result.executionTimeMs,
+        truncated: result.truncated || false,
       };
 
       setTabs(prev => prev.map(t => 
@@ -183,7 +185,7 @@ export const QueryPage: React.FC = () => {
           : t
       ));
       
-      message.success(`Query executed successfully (${result.execution_time_ms}ms)`);
+      message.success(`Query executed successfully (${result.executionTimeMs}ms)`);
     } catch (error: any) {
       console.error('Query execution error:', error);
       message.error(error.message || 'Query execution failed');

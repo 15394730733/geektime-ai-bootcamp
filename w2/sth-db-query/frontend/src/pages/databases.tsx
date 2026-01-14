@@ -28,6 +28,8 @@ export const DatabaseListPage = () => {
   const handleFormSuccess = async () => {
     setFormVisible(false);
     message.success('Database connection saved successfully');
+    // Refresh the database list to show the updated data
+    await actions.loadDatabases();
   };
 
   const handleFormCancel = () => {

@@ -10,6 +10,14 @@ import { PlayCircleOutlined, ClearOutlined, CodeOutlined, MessageOutlined } from
 import Editor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 
+// Configure monaco-editor to use local resources instead of CDN
+Editor.defaultProps = {
+  ...Editor.defaultProps,
+  loader: () => {
+    return Promise.resolve(monaco);
+  },
+};
+
 interface QueryEditorProps {
   value: string;
   onChange: (value: string) => void;

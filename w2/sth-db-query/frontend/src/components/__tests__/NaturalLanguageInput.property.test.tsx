@@ -87,14 +87,14 @@ describe('NaturalLanguageInput Property Tests', () => {
     for (const query of naturalLanguageQueries) {
       // Mock successful LLM response
       const mockLLMResult: NaturalLanguageQueryResult = {
-        generated_sql: `SELECT * FROM table WHERE condition = '${query.toLowerCase().replace(/\s+/g, '_')}'`,
+        generatedSql: `SELECT * FROM table WHERE condition = '${query.toLowerCase().replace(/\s+/g, '_')}'`,
         columns: ['id', 'name', 'value'],
         rows: [
           [1, 'Test Item 1', 100],
           [2, 'Test Item 2', 200],
         ],
-        row_count: 2,
-        execution_time_ms: 150,
+        rowCount: 2,
+        executionTimeMs: 150,
         truncated: false,
       };
 
@@ -126,7 +126,7 @@ describe('NaturalLanguageInput Property Tests', () => {
       });
 
       // Verify that the generated SQL content is shown (use getAllByText to handle duplicates)
-      const sqlDisplays = screen.getAllByText(mockLLMResult.generated_sql);
+      const sqlDisplays = screen.getAllByText(mockLLMResult.generatedSql);
       expect(sqlDisplays.length).toBeGreaterThan(0);
 
       // Verify that query results are displayed
@@ -142,8 +142,8 @@ describe('NaturalLanguageInput Property Tests', () => {
 
       expect(resultsColumns).toHaveTextContent(JSON.stringify(mockLLMResult.columns));
       expect(resultsRows).toHaveTextContent(JSON.stringify(mockLLMResult.rows));
-      expect(resultsCount).toHaveTextContent(mockLLMResult.row_count.toString());
-      expect(resultsTime).toHaveTextContent(mockLLMResult.execution_time_ms.toString());
+      expect(resultsCount).toHaveTextContent(mockLLMResult.rowCount.toString());
+      expect(resultsTime).toHaveTextContent(mockLLMResult.executionTimeMs.toString());
 
       unmount();
     }

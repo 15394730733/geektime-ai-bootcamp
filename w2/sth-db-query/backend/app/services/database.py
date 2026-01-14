@@ -120,7 +120,7 @@ class DatabaseService:
 
         # Create a full DatabaseCreate object for the update
         full_update_data = DatabaseCreate(
-            name=existing.name,
+            name=update_data.name if update_data.name is not None else existing.name,
             url=update_data.url if update_data.url is not None else existing.url,
             description=update_data.description if update_data.description is not None else existing.description
         )
@@ -506,8 +506,8 @@ class DatabaseService:
             # Delete existing metadata
             await delete_database_metadata(db, connection_id)
 
-            # Extract metadata from the actual database (synchronous operation)
-            metadata_list = self._extract_database_metadata(database_url, connection_id)
+            # Extract metadata from the actual database (asynchronous operation)
+            metadata_list = await self._extract_database_metadata(database_url, connection_id)
 
             # Save new metadata
             if metadata_list:
@@ -698,11 +698,11 @@ class DatabaseService:
                     row_count = 0
                     truncated = False
 
-                    # Parse result string to get affected row count
-                    if result:
-                        parts = result.split()
-                        if len(parts) >= 2 and parts[1].isdigit():
-                            row_count = int(parts[1])
+                    # Get affected row count from asyncpg result object
+                    if hasattr(result, 'rowcount'):
+                        row_count = result.rowcount
+                    elif hasattr(result, 'count'):
+                        row_count = result.count
 
                 execution_time_ms = int((time.time() - start_time) * 1000)
 

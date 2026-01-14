@@ -88,6 +88,7 @@ async def create_or_update_database(
         if existing:
             # Update existing database - create DatabaseUpdate from dict
             update_data = database_schema.DatabaseUpdate(
+                name=database.get('name'),
                 url=database.get('url'),
                 description=database.get('description')
             )

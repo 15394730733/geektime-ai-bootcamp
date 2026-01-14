@@ -19,10 +19,10 @@ export interface QueryTab {
  */
 export interface QueryResult {
   columns: string[];
-  rows: any[][];
+  rows: any[][] | Record<string, any>[];
   rowCount: number;
   executionTimeMs: number;
-  truncated: boolean;
+  truncated?: boolean;
 }
 
 /**

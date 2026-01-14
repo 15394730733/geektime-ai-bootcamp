@@ -240,8 +240,8 @@ describe('APIClient', () => {
           [1, 'John Doe'],
           [2, 'Jane Smith'],
         ],
-        row_count: 2,
-        execution_time_ms: 150,
+        rowCount: 2,
+        executionTime: 150,
         truncated: false,
       }
 

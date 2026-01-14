@@ -43,9 +43,9 @@ export const DatabaseFormModal: React.FC<DatabaseFormModalProps> = ({
         });
         actions.addDatabase(newDatabase);
       } else {
-        // 编辑模式：包含name字段以满足后端验证
+        // 编辑模式：传递用户输入的新名称
         const updatedDatabase = await apiClient.updateDatabase(initialValues?.name || '', {
-          name: initialValues?.name || '', // 包含name字段
+          name: data.name, // 使用用户输入的新名称
           url: data.url,
           description: data.description || '',
         });

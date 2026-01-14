@@ -12,7 +12,7 @@ const { Text } = Typography;
 
 interface QueryResultsProps {
   columns: string[];
-  rows: any[][];
+  rows: any[][] | Record<string, any>[];
   rowCount: number;
   executionTimeMs: number;
   truncated?: boolean;
@@ -57,9 +57,17 @@ export const QueryResults: React.FC<QueryResultsProps> = ({
 
   const tableData = rows.map((row, index) => {
     const rowData: any = { key: index };
-    row.forEach((value, colIndex) => {
-      rowData[colIndex] = value;
-    });
+    if (Array.isArray(row)) {
+      // Handle array rows (legacy format)
+      row.forEach((value, colIndex) => {
+        rowData[colIndex] = value;
+      });
+    } else if (typeof row === 'object' && row !== null) {
+      // Handle object rows (current backend format)
+      columns.forEach((col, colIndex) => {
+        rowData[colIndex] = row[col];
+      });
+    }
     return rowData;
   });
 
@@ -68,8 +76,8 @@ export const QueryResults: React.FC<QueryResultsProps> = ({
   const convertToCSV = (data: any[], columns: string[]): string => {
     const headers = columns.join(',');
     const csvRows = data.map(row => 
-      columns.map((_, colIndex) => {
-        const value = row[colIndex];
+      columns.map((col, colIndex) => {
+        const value = Array.isArray(row) ? row[colIndex] : row[col];
         // Handle null/undefined values
         if (value == null) return '';
         // Escape quotes and wrap in quotes if contains comma, quote, or newline
@@ -87,7 +95,7 @@ export const QueryResults: React.FC<QueryResultsProps> = ({
     const jsonData = data.map(row => {
       const obj: any = {};
       columns.forEach((col, colIndex) => {
-        obj[col] = row[colIndex];
+        obj[col] = Array.isArray(row) ? row[colIndex] : row[col];
       });
       return obj;
     });

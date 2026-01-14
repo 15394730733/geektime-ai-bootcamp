@@ -10,6 +10,24 @@ import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryEditor } from '../QueryEditor';
 
+// Mock monaco-editor
+vi.mock('monaco-editor', () => ({
+  languages: {
+    setLanguageConfiguration: vi.fn(),
+  },
+  KeyMod: {
+    CtrlCmd: 2048,
+  },
+  KeyCode: {
+    Enter: 3,
+  },
+  editor: {
+    EditorOption: {
+      readOnly: 'readOnly',
+    },
+  },
+}));
+
 // Mock Monaco Editor for property testing
 vi.mock('@monaco-editor/react', () => ({
   default: ({ value, onChange, onMount, language, options, ...props }: any) => {
@@ -18,10 +36,16 @@ vi.mock('@monaco-editor/react', () => ({
         const mockEditor = {
           focus: vi.fn(),
           addCommand: vi.fn(),
+          getOption: vi.fn((option) => {
+            if (option === 'readOnly') {
+              return options?.readOnly || false;
+            }
+            return undefined;
+          }),
         };
         onMount(mockEditor);
       }
-    }, [onMount]);
+    }, [onMount, options]);
 
     return (
       <div
@@ -34,19 +58,6 @@ vi.mock('@monaco-editor/react', () => ({
         <textarea value={value} onChange={(e) => onChange?.(e.target.value)} />
       </div>
     );
-  },
-}));
-
-// Mock monaco-editor
-vi.mock('monaco-editor', () => ({
-  languages: {
-    setLanguageConfiguration: vi.fn(),
-  },
-  KeyMod: {
-    CtrlCmd: 2048,
-  },
-  KeyCode: {
-    Enter: 3,
   },
 }));
 

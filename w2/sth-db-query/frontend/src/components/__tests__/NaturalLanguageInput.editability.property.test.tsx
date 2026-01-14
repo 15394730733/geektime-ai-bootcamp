@@ -76,11 +76,11 @@ describe('NaturalLanguageInput SQL Editability Property Tests', () => {
     for (const originalSQL of generatedSQLQueries) {
       // Mock successful LLM response with generated SQL
       const mockLLMResult: NaturalLanguageQueryResult = {
-        generated_sql: originalSQL,
+        generatedSql: originalSQL,
         columns: ['result'],
         rows: [['test']],
-        row_count: 1,
-        execution_time_ms: 100,
+        rowCount: 1,
+        executionTimeMs: 100,
         truncated: false,
       };
 
@@ -144,8 +144,8 @@ describe('NaturalLanguageInput SQL Editability Property Tests', () => {
       mockOnExecuteSQL.mockResolvedValueOnce({
         columns: ['edited_result'],
         rows: [['edited_test']],
-        row_count: 1,
-        execution_time_ms: 150,
+        rowCount: 1,
+        executionTimeMs: 150,
         truncated: false,
       });
 
@@ -192,11 +192,11 @@ describe('NaturalLanguageInput SQL Editability Property Tests', () => {
 
     for (const testCase of sqlTestCases) {
       const mockLLMResult: NaturalLanguageQueryResult = {
-        generated_sql: testCase.original,
+        generatedSql: testCase.original,
         columns: ['test'],
         rows: [['data']],
-        row_count: 1,
-        execution_time_ms: 100,
+        rowCount: 1,
+        executionTimeMs: 100,
         truncated: false,
       };
 
@@ -245,8 +245,8 @@ describe('NaturalLanguageInput SQL Editability Property Tests', () => {
       mockOnExecuteSQL.mockResolvedValueOnce({
         columns: ['result'],
         rows: [['edited']],
-        row_count: 1,
-        execution_time_ms: 120,
+        rowCount: 1,
+        executionTimeMs: 120,
         truncated: false,
       });
 
@@ -267,11 +267,11 @@ describe('NaturalLanguageInput SQL Editability Property Tests', () => {
     const testSQL = 'SELECT * FROM products WHERE price > 100 ORDER BY name';
     
     const mockLLMResult: NaturalLanguageQueryResult = {
-      generated_sql: testSQL,
+      generatedSql: testSQL,
       columns: ['id', 'name', 'price'],
       rows: [[1, 'Product A', 150], [2, 'Product B', 200]],
-      row_count: 2,
-      execution_time_ms: 85,
+      rowCount: 2,
+      executionTimeMs: 85,
       truncated: false,
     };
 
@@ -362,11 +362,11 @@ describe('NaturalLanguageInput SQL Editability Property Tests', () => {
     const editedSQL = 'SELECT name, email, created_at FROM users WHERE active = true ORDER BY created_at DESC';
     
     const mockLLMResult: NaturalLanguageQueryResult = {
-      generated_sql: originalSQL,
+      generatedSql: originalSQL,
       columns: ['name'],
       rows: [['John'], ['Jane']],
-      row_count: 2,
-      execution_time_ms: 50,
+      rowCount: 2,
+      executionTimeMs: 50,
       truncated: false,
     };
 
@@ -407,8 +407,8 @@ describe('NaturalLanguageInput SQL Editability Property Tests', () => {
     mockOnExecuteSQL.mockResolvedValueOnce({
       columns: ['name', 'email', 'created_at'],
       rows: [['John', 'john@example.com', '2024-01-01'], ['Jane', 'jane@example.com', '2024-01-02']],
-      row_count: 2,
-      execution_time_ms: 75,
+      rowCount: 2,
+      executionTimeMs: 75,
       truncated: false,
     });
 

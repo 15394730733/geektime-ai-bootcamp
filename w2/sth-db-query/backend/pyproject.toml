@@ -40,6 +40,16 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short --cov=app --cov-report=term-missing"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "functional: Functional tests",
+    "api: API tests",
+    "security: Security tests",
+    "llm: LLM-related tests",
+    "sql: SQL-related tests",
+    "metadata: Metadata-related tests"
+]
 
 [tool.coverage.run]
 source = ["app"]

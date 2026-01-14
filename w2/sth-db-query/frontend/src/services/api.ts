@@ -55,10 +55,10 @@ export interface QueryRequest {
 
 export interface QueryResult {
   columns: string[];
-  rows: any[][];
-  row_count: number;
-  execution_time_ms: number;
-  truncated: boolean;
+  rows: any[][] | Record<string, any>[];
+  rowCount: number;
+  executionTimeMs: number;
+  truncated?: boolean;
 }
 
 export interface NaturalLanguageQueryRequest {
@@ -156,7 +156,9 @@ class APIClient {
   }
 
   async updateDatabase(name: string, data: Partial<DatabaseConnection>): Promise<DatabaseConnection> {
-    const response = await this.client.put<APIResponse<DatabaseConnection>>(`/dbs/${name}`, data);
+    // Use new name if provided, otherwise use old name
+    const targetName = data.name || name;
+    const response = await this.client.put<APIResponse<DatabaseConnection>>(`/dbs/${targetName}`, data);
     if (!response.data.success) {
       throw new Error(response.data.message);
     }
@@ -190,8 +192,15 @@ class APIClient {
 
   // Query execution
   async executeQuery(databaseName: string, query: QueryRequest): Promise<QueryResult> {
+    console.log('=== API.executeQuery called ===');
+    console.log('Database name:', databaseName);
+    console.log('Query:', query.sql);
+    
+    const url = `/dbs/${databaseName}/query`;
+    console.log('Full URL:', url);
+    
     const response = await this.client.post<APIResponse<QueryResult>>(
-      `/dbs/${databaseName}/query`,
+      url,
       query
     );
     if (!response.data.success) {

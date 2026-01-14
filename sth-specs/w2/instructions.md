@@ -67,5 +67,7 @@ POST /api/v1/dbs/{name}/query/natural
 
 
 ## code review
-
 /speckit.analyze 仔细 review w2/sth-db_query 代码，删除不用的代码，添加更多 unit test,以及寻找opportunity
+
+# 其他
+根据 @specs/001-db-query-tool/spec.md 和@specs/001-db-query-tool/plan.md 撰写详细介绍。

@@ -55,16 +55,16 @@ describe('TabBar Component', () => {
     vi.clearAllMocks();
   });
 
-  it('renders database name header', () => {
+  it('database name header is not rendered (as requested by user)', () => {
     render(<TabBar {...defaultProps} />);
 
-    expect(screen.getByText('Database: test_database')).toBeInTheDocument();
+    expect(screen.queryByText('Database: test_database')).not.toBeInTheDocument();
   });
 
-  it('shows "No database selected" when database name is null', () => {
+  it('"No database selected" text is not displayed when database name is null (as requested by user)', () => {
     render(<TabBar {...defaultProps} databaseName={null} />);
 
-    expect(screen.getByText('No database selected')).toBeInTheDocument();
+    expect(screen.queryByText('No database selected')).not.toBeInTheDocument();
   });
 
   it('renders all tabs', () => {
@@ -166,15 +166,10 @@ describe('TabBar Component', () => {
   it('applies correct styling classes', () => {
     render(<TabBar {...defaultProps} />);
 
-    // Check the main container
-    const mainContainer = screen.getByText('Database: test_database')
-      .closest('div')?.parentElement?.parentElement;
-    expect(mainContainer).toHaveClass('border-b', 'border-gray-200', 'bg-white');
-
-    // Check the header section
-    const headerSection = screen.getByText('Database: test_database')
-      .closest('div')?.parentElement;
-    expect(headerSection).toHaveClass('px-4', 'py-2', 'bg-gray-50');
+    // Check the main container by finding the tablist and going up
+    const tabList = screen.getByRole('tablist');
+    const mainContainer = tabList.closest('.border-b.border-gray-200.bg-white');
+    expect(mainContainer).toBeInTheDocument();
   });
 
   it('handles empty tabs array gracefully', () => {
@@ -186,7 +181,6 @@ describe('TabBar Component', () => {
 
     render(<TabBar {...emptyTabsProps} />);
 
-    expect(screen.getByText('Database: test_database')).toBeInTheDocument();
     // Should still render the tabs container even with no tabs
     expect(screen.getByRole('tablist')).toBeInTheDocument();
   });
@@ -201,13 +195,11 @@ describe('TabBar Component', () => {
     expect(inactiveTab).not.toHaveClass('ant-tabs-tab-active');
   });
 
-  it('renders database icon in header', () => {
+  it('database information is not displayed in header (as requested by user)', () => {
     render(<TabBar {...defaultProps} />);
 
-    // Check for the database icon (DatabaseOutlined)
-    const icon = screen.getByText('Database: test_database')
-      .closest('div')
-      ?.querySelector('.anticon-database');
-    expect(icon).toBeInTheDocument();
+    // Check that database name is not displayed (as per user request to hide it)
+    expect(screen.queryByText('Database: test_database')).not.toBeInTheDocument();
+    expect(screen.queryByText('No database selected')).not.toBeInTheDocument();
   });
 });
