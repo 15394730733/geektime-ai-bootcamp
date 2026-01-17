@@ -1,13 +1,14 @@
 """
-Database connection service layer with validation using asyncpg.
+Database connection service layer with multi-database support.
+
+Supports PostgreSQL and MySQL databases using adapter pattern.
 """
 
 import asyncio
 import logging
 import re
-import asyncpg
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from urllib.parse import urlparse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -28,6 +29,8 @@ from app.core.errors import (
     ValidationError, TimeoutError, categorize_asyncpg_error, categorize_timeout_error
 )
 from app.core.connection_pool import connection_pool_manager
+from app.core.adapter_factory import AdapterFactory
+from app.core.db_type_detector import DatabaseType, DatabaseTypeDetector
 
 # Alias for backward compatibility
 DatabaseServiceError = DatabaseQueryError
@@ -281,26 +284,31 @@ class DatabaseService:
         self._validate_name_format(data.name)
 
     def _validate_url_format(self, url: str):
-        """Validate database URL format."""
+        """Validate database URL format (supports PostgreSQL and MySQL)."""
         if not url or not isinstance(url, str):
             raise ValidationError(
                 message="Database URL is required",
                 user_message="Please provide a valid database connection URL.",
-                suggestions=["Enter a PostgreSQL connection URL in the format: postgresql://user:password@host:port/database"]
+                suggestions=[
+                    "Enter a PostgreSQL connection URL: postgresql://user:password@host:port/database",
+                    "Enter a MySQL connection URL: mysql://user:password@host:port/database"
+                ]
             )
 
         try:
             parsed = urlparse(url)
 
-            # Must be postgresql scheme
-            if parsed.scheme not in ["postgresql", "postgres"]:
+            # Detect database type
+            db_type = DatabaseTypeDetector.detect(url)
+
+            if db_type == DatabaseType.UNKNOWN:
                 raise ConfigurationError(
-                    message="Only PostgreSQL databases are supported",
-                    user_message="This tool only supports PostgreSQL databases.",
+                    message="Unsupported database type",
+                    user_message="This tool supports PostgreSQL and MySQL databases only.",
                     suggestions=[
-                        "Use a PostgreSQL database URL",
-                        "Ensure the URL starts with 'postgresql://' or 'postgres://'",
-                        "Contact support if you need to connect to other database types"
+                        "Use a PostgreSQL database URL (postgresql://user:password@host:port/database)",
+                        "Use a MySQL database URL (mysql://user:password@host:port/database)",
+                        "Ensure the URL scheme is either 'postgresql', 'postgres', or 'mysql'"
                     ]
                 )
 
@@ -311,7 +319,8 @@ class DatabaseService:
                     user_message="The database URL is missing a hostname.",
                     suggestions=[
                         "Include the database server hostname or IP address",
-                        "Example: postgresql://user:password@localhost:5432/database"
+                        "Example (PostgreSQL): postgresql://user:password@localhost:5432/database",
+                        "Example (MySQL): mysql://user:password@localhost:3306/database"
                     ]
                 )
 
@@ -322,7 +331,8 @@ class DatabaseService:
                     user_message="The database URL is missing a database name.",
                     suggestions=[
                         "Include the database name in the URL path",
-                        "Example: postgresql://user:password@host:5432/mydatabase"
+                        "Example: postgresql://user:password@host:5432/mydatabase",
+                        "Example: mysql://user:password@host:3306/mydatabase"
                     ]
                 )
 
@@ -332,8 +342,8 @@ class DatabaseService:
                     message="Database port must be between 1 and 65535",
                     user_message="The database port number is invalid.",
                     suggestions=[
-                        "Use a valid port number (typically 5432 for PostgreSQL)",
-                        "Remove the port to use the default (5432)"
+                        "Use a valid port number (5432 for PostgreSQL, 3306 for MySQL)",
+                        "Remove the port to use the default"
                     ]
                 )
 
@@ -344,7 +354,8 @@ class DatabaseService:
                 message=f"Invalid database URL format: {str(e)}",
                 user_message="The database URL format is invalid.",
                 suggestions=[
-                    "Use the format: postgresql://user:password@host:port/database",
+                    "PostgreSQL format: postgresql://user:password@host:port/database",
+                    "MySQL format: mysql://user:password@host:port/database",
                     "Check for typos in the URL",
                     "Ensure special characters are properly encoded"
                 ],
@@ -407,38 +418,40 @@ class DatabaseService:
             )
 
     async def _test_connection(self, url: str) -> Dict[str, Any]:
-        """Test database connection using async connection pool."""
+        """Test database connection using adapter and connection pool."""
         try:
             self._validate_url_format(url)
 
             start_time = time.time()
 
+            # Create adapter for the database type
+            adapter = AdapterFactory.create_adapter(url)
+
             # Use async connection pool to test connection
             try:
                 conn = await connection_pool_manager.get_connection(url)
-                # Test the connection with a simple query
-                await conn.fetchval("SELECT 1")
+                # Test the connection with adapter
+                is_alive = await adapter.test_connection(conn)
 
                 # Return connection to pool
                 await connection_pool_manager.return_connection(url, conn)
 
                 latency_ms = int((time.time() - start_time) * 1000)
 
-                return {
-                    "success": True,
-                    "message": "Database connection successful",
-                    "latency_ms": latency_ms
-                }
+                if is_alive:
+                    return {
+                        "success": True,
+                        "message": "Database connection successful",
+                        "latency_ms": latency_ms
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "message": "Database connection test failed",
+                        "error": "Connection test returned False",
+                        "latency_ms": latency_ms
+                    }
 
-            except asyncpg.PostgresConnectionError as e:
-                categorized_error = categorize_asyncpg_error(e)
-                return {
-                    "success": False,
-                    "message": categorized_error.user_message,
-                    "error": str(e),
-                    "error_info": categorized_error,
-                    "latency_ms": int((time.time() - start_time) * 1000)
-                }
             except Exception as e:
                 return {
                     "success": False,
@@ -527,130 +540,28 @@ class DatabaseService:
             raise DatabaseServiceError(f"Failed to refresh database metadata: {str(e)}")
 
     async def _extract_database_metadata(self, database_url: str, connection_id: str) -> List[Dict[str, Any]]:
-        """Extract metadata from PostgreSQL database using async connection pool."""
+        """Extract metadata from database (PostgreSQL or MySQL) using adapter."""
         try:
+            # Create adapter for the database type
+            adapter = AdapterFactory.create_adapter(database_url)
+
             # Get connection from pool
             conn = await connection_pool_manager.get_connection(database_url)
 
             try:
-                metadata_list = []
-
-                # Get tables
-                tables_query = """
-                    SELECT
-                        schemaname as schema_name,
-                        tablename as table_name
-                    FROM pg_tables
-                    WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
-                    ORDER BY schemaname, tablename
-                """
-                tables = await conn.fetch(tables_query)
-
-                for table in tables:
-                    schema_name = table['schema_name']
-                    table_name = table['table_name']
-
-                    # Get columns for this table
-                    columns_query = """
-                        SELECT
-                            c.column_name,
-                            c.data_type,
-                            c.is_nullable = 'YES' as is_nullable,
-                            COALESCE(pk.column_name IS NOT NULL, false) as is_primary_key,
-                            c.column_default as default_value
-                        FROM information_schema.columns c
-                        LEFT JOIN (
-                            SELECT ku.column_name
-                            FROM information_schema.table_constraints tc
-                            JOIN information_schema.key_column_usage ku
-                                ON tc.constraint_name = ku.constraint_name
-                            WHERE tc.constraint_type = 'PRIMARY KEY'
-                                AND tc.table_schema = $1
-                                AND tc.table_name = $2
-                        ) pk ON c.column_name = pk.column_name
-                        WHERE c.table_schema = $1
-                            AND c.table_name = $2
-                        ORDER BY c.ordinal_position
-                    """
-                    columns = await conn.fetch(columns_query, schema_name, table_name)
-
-                    column_list = []
-                    for col in columns:
-                        column_list.append({
-                            "name": col['column_name'],
-                            "data_type": col['data_type'],
-                            "is_nullable": col['is_nullable'],
-                            "is_primary_key": col['is_primary_key'],
-                            "default_value": col['default_value']
-                        })
-
-                    metadata_list.append({
-                        "connection_id": connection_id,
-                        "object_type": "table",
-                        "schema_name": schema_name,
-                        "object_name": table_name,
-                        "columns": column_list
-                    })
-
-                # Get views
-                views_query = """
-                    SELECT
-                        schemaname as schema_name,
-                        viewname as view_name
-                    FROM pg_views
-                    WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
-                    ORDER BY schemaname, viewname
-                """
-                views = await conn.fetch(views_query)
-
-                for view in views:
-                    schema_name = view['schema_name']
-                    view_name = view['view_name']
-
-                    # Get columns for this view (similar to tables)
-                    columns_query = """
-                        SELECT
-                            column_name,
-                            data_type,
-                            is_nullable = 'YES' as is_nullable,
-                            false as is_primary_key,
-                            NULL::text as default_value
-                        FROM information_schema.columns
-                        WHERE table_schema = $1
-                            AND table_name = $2
-                        ORDER BY ordinal_position
-                    """
-                    columns = await conn.fetch(columns_query, schema_name, view_name)
-
-                    column_list = []
-                    for col in columns:
-                        column_list.append({
-                            "name": col['column_name'],
-                            "data_type": col['data_type'],
-                            "is_nullable": col['is_nullable'],
-                            "is_primary_key": col['is_primary_key'],
-                            "default_value": col['default_value']
-                        })
-
-                    metadata_list.append({
-                        "connection_id": connection_id,
-                        "object_type": "view",
-                        "schema_name": schema_name,
-                        "object_name": view_name,
-                        "columns": column_list
-                    })
-
+                # Use adapter to get metadata
+                metadata_list = await adapter.get_metadata(conn, connection_id)
                 return metadata_list
 
             finally:
-                # Return connection to pool instead of closing
+                # Return connection to pool
                 await connection_pool_manager.return_connection(database_url, conn)
 
         except Exception as e:
             raise DatabaseServiceError(f"Failed to extract database metadata: {str(e)}")
 
     async def execute_query(self, db: AsyncSession, database_name: str, sql: str, max_rows: int = 1000, timeout_seconds: int = 30) -> Dict[str, Any]:
-        """Execute a SQL query against the specified database with timeout handling using async connection pool."""
+        """Execute a SQL query against the specified database using adapter."""
         try:
             # Get the database connection
             database_conn = await self.get_database(db, database_name)
@@ -665,63 +576,32 @@ class DatabaseService:
                     ]
                 )
 
-            start_time = time.time()
+            # Create adapter for the database type
+            adapter = AdapterFactory.create_adapter(database_conn.url)
 
-            # Get connection from pool instead of creating new one
+            # Get connection from pool
             conn = await connection_pool_manager.get_connection(database_conn.url)
 
             try:
-                # Set statement timeout for the query
-                await conn.execute(f"SET statement_timeout = {timeout_seconds * 1000}")  # Convert to milliseconds
+                # Execute query using adapter
+                result = await adapter.execute_query(conn, sql, timeout_seconds)
 
-                # Execute the query and fetch results
-                sql_upper = sql.strip().upper()
-                if sql_upper.startswith('SELECT') or sql_upper.startswith('WITH'):
-                    # For SELECT queries, use fetch
-                    rows = await conn.fetch(sql)
-                    columns = list(rows[0].keys()) if rows else []
-                    row_count = len(rows)
+                # Apply max_rows truncation if needed
+                truncated = False
+                if len(result['rows']) > max_rows:
+                    result['rows'] = result['rows'][:max_rows]
+                    result['row_count'] = max_rows
+                    truncated = True
 
-                    # Convert Record objects to dicts
-                    rows_list = [dict(row) for row in rows]
+                result['truncated'] = truncated
+                return result
 
-                    # Check if we need to truncate
-                    truncated = row_count > max_rows
-                    if truncated:
-                        rows_list = rows_list[:max_rows]
-                        row_count = max_rows
-                else:
-                    # For non-SELECT queries, use execute
-                    result = await conn.execute(sql)
-                    columns = []
-                    rows_list = []
-                    row_count = 0
-                    truncated = False
-
-                    # Get affected row count from asyncpg result object
-                    if hasattr(result, 'rowcount'):
-                        row_count = result.rowcount
-                    elif hasattr(result, 'count'):
-                        row_count = result.count
-
-                execution_time_ms = int((time.time() - start_time) * 1000)
-
-                return {
-                    "columns": columns,
-                    "rows": rows_list,
-                    "row_count": row_count,
-                    "execution_time_ms": execution_time_ms,
-                    "truncated": truncated
-                }
-
-            except asyncpg.QueryCanceledError:
-                raise categorize_timeout_error("Query execution", timeout_seconds)
-
-            except asyncpg.PostgresError as e:
-                raise categorize_asyncpg_error(e)
+            except Exception as e:
+                # Re-raise database-specific errors
+                raise
 
             finally:
-                # Return connection to pool instead of closing
+                # Return connection to pool
                 await connection_pool_manager.return_connection(database_conn.url, conn)
 
         except DatabaseQueryError:
