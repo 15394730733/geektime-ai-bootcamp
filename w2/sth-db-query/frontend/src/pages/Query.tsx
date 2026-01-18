@@ -30,7 +30,7 @@ import '../styles/PanelResize.css';
 export const QueryPage: React.FC = () => {
   const { state, actions } = useAppState();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { screenWidth, layoutMode } = useResponsive();
   
   // Force re-render when selectedDatabase changes
@@ -78,9 +78,8 @@ export const QueryPage: React.FC = () => {
     console.log('URL param useEffect triggered. dbParam:', dbParam, 'current:', state.selectedDatabase);
     console.log('Active databases:', activeDatabases.map(db => ({ id: db.id, name: db.name })));
     
-    // Always update database selection when URL param changes,
-    // even if a database is already selected
-    if (dbParam) {
+    // Only update database selection if URL param is different from current selection
+    if (dbParam && dbParam !== state.selectedDatabase) {
       const dbExists = activeDatabases.some(db => db.id === dbParam);
       console.log('Database exists:', dbExists);
       if (dbExists) {
@@ -272,6 +271,13 @@ export const QueryPage: React.FC = () => {
     return handleExecuteQuery(activeTabId);
   }, [state.selectedDatabase, activeTabId, handleExecuteQuery]);
 
+  // Get database name from UUID for display
+  const getDatabaseName = useCallback((databaseId: string | null): string | null => {
+    if (!databaseId) return null;
+    const database = state.databases.find(db => db.id === databaseId);
+    return database?.name || databaseId;
+  }, [state.databases]);
+
   return (
     <div className="page-container" style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Debug Component - Hidden */}
@@ -307,6 +313,8 @@ export const QueryPage: React.FC = () => {
                   
                   // Force immediate update by calling with value
                   if (value && value !== state.selectedDatabase) {
+                    // Update URL parameter to reflect the new database selection
+                    setSearchParams({ db: value });
                     actions.selectDatabase(value);
                   }
                 }}
@@ -326,10 +334,6 @@ export const QueryPage: React.FC = () => {
                   </Select.Option>
                 ))}
               </Select>
-              {/* Debug: Show raw state value */}
-              <span style={{ fontSize: '11px', color: '#999', marginLeft: '8px' }}>
-                (State: {state.selectedDatabase || 'null'})
-              </span>
             </Space>
           </div>
 
@@ -366,7 +370,7 @@ export const QueryPage: React.FC = () => {
                   <MobileMetadataToggle onClick={handleMobileDrawerToggle} />
                   {state.selectedDatabase && (
                     <span style={{ fontSize: '12px', color: '#666' }}>
-                      {state.selectedDatabase}
+                      {getDatabaseName(state.selectedDatabase)}
                     </span>
                   )}
                 </div>
@@ -376,7 +380,7 @@ export const QueryPage: React.FC = () => {
                   <QueryPanel
                     tabs={tabs}
                     activeTabId={activeTabId}
-                    databaseName={state.selectedDatabase}
+                    databaseName={getDatabaseName(state.selectedDatabase)}
                     verticalSplitSize={layoutPreferences.verticalSplitSize}
                     loading={loading}
                     onTabChange={handleTabChange}
@@ -393,7 +397,7 @@ export const QueryPage: React.FC = () => {
                 <MobileMetadataDrawer
                   visible={mobileDrawerVisible}
                   onClose={handleMobileDrawerClose}
-                  databaseName={state.selectedDatabase}
+                  databaseName={getDatabaseName(state.selectedDatabase)}
                   metadata={state.metadata}
                   loading={state.loading.metadata}
                   onTableClick={handleTableClick}
@@ -416,7 +420,7 @@ export const QueryPage: React.FC = () => {
                 >
                   <div style={{ height: '100%', width: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <MetadataPanel
-                      databaseName={state.selectedDatabase}
+                      databaseName={getDatabaseName(state.selectedDatabase)}
                       metadata={state.metadata}
                       loading={state.loading.metadata}
                       onTableClick={handleTableClick}
@@ -445,7 +449,7 @@ export const QueryPage: React.FC = () => {
                   <QueryPanel
                     tabs={tabs}
                     activeTabId={activeTabId}
-                    databaseName={state.selectedDatabase}
+                    databaseName={getDatabaseName(state.selectedDatabase)}
                     verticalSplitSize={layoutPreferences.verticalSplitSize}
                     loading={loading}
                     onTabChange={handleTabChange}
