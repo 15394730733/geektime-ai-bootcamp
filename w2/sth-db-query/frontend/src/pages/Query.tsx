@@ -76,12 +76,12 @@ export const QueryPage: React.FC = () => {
   useEffect(() => {
     const dbParam = searchParams.get('db');
     console.log('URL param useEffect triggered. dbParam:', dbParam, 'current:', state.selectedDatabase);
-    console.log('Active databases:', activeDatabases.map(db => db.name));
+    console.log('Active databases:', activeDatabases.map(db => ({ id: db.id, name: db.name })));
     
     // Always update database selection when URL param changes,
     // even if a database is already selected
     if (dbParam) {
-      const dbExists = activeDatabases.some(db => db.name === dbParam);
+      const dbExists = activeDatabases.some(db => db.id === dbParam);
       console.log('Database exists:', dbExists);
       if (dbExists) {
         console.log('Setting database from URL:', dbParam);
