@@ -1,0 +1,97 @@
+---
+inclusion: always
+---
+# Database Query Tool Development Guidelines
+
+Auto-generated from all feature plans. Last updated: 2025-12-30
+
+## Active Technologies
+
+- Python 3.12+ (uv), TypeScript, React 19+ + FastAPI, sqlglot, OpenAI SDK, Refine5, Tailwind CSS, Ant Design, Monaco Editor (001-db-query-tool)
+
+## Project Structure
+
+```text
+./w2/sth-db-query/
+├── .db_query/
+│   └── db_query.db          # SQLite database for connections and metadata
+├── backend/
+│   ├── app/
+│   │   ├── __init__.py
+│   │   ├── main.py          # FastAPI application
+│   │   ├── api/
+│   │   │   ├── __init__.py
+│   │   │   └── v1/
+│   │   │       ├── __init__.py
+│   │   │       ├── dbs.py   # Database management endpoints
+│   │   │       └── query.py # Query execution endpoints
+│   │   ├── core/
+│   │   │   ├── __init__.py
+│   │   │   ├── config.py    # Application configuration
+│   │   │   └── security.py  # SQL validation logic
+│   │   ├── crud/
+│   │   │   ├── __init__.py
+│   │   ├── models/
+│   │   │   ├── __init__.py
+│   │   │   ├── database.py  # Database connection models
+│   │   │   └── metadata.py  # Metadata models
+│   │   ├── schemas/
+│   │   │   ├── __init__.py
+│   │   │   ├── database.py  # Pydantic schemas
+│   │   │   └── query.py     # Query schemas
+│   │   └── services/
+│   │       ├── __init__.py
+│   │       ├── database.py  # Database connection service
+│   │       ├── metadata.py  # Metadata extraction service
+│   │       ├── llm.py       # LLM integration service
+│   │       └── query.py     # Query execution service
+│   ├── pyproject.toml       # Python dependencies (uv)
+│   ├── tests/
+│   │   ├── __init__.py
+│   │   ├── conftest.py
+│   │   ├── test_api.py
+│   │   └── test_services.py
+│   └── .env.example         # Environment variables template
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── DatabaseList.tsx
+│   │   │   ├── DatabaseForm.tsx
+│   │   │   ├── MetadataViewer.tsx
+│   │   │   ├── QueryEditor.tsx
+│   │   │   ├── QueryResults.tsx
+│   │   │   └── NaturalLanguageInput.tsx
+│   │   ├── pages/
+│   │   │   ├── Databases.tsx
+│   │   │   ├── Query.tsx
+│   │   │   └── index.tsx
+│   │   ├── services/
+│   │   │   ├── api.ts
+│   │   │   └── types.ts
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── tailwind.config.js
+│   └── tests/
+│       ├── components/
+│       └── integration/
+├── docker-compose.yml        # Development environment
+└── README.md
+```
+
+## Commands
+
+cd src; pytest; ruff check .
+
+## Code Style
+
+Python: Follow standard conventions
+
+## Recent Changes
+
+- 001-db-query-tool: Added Python 3.x (uv), TypeScript + FastAPI, sqlglot, OpenAI SDK, React, Refine5, Tailwind CSS, Ant Design, Monaco Editor
+
+<!-- MANUAL ADDITIONS START -->
+<!-- MANUAL ADDITIONS END -->

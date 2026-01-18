@@ -1,0 +1,6 @@
+/* Ant Design Select 组件修复 - 保持最小化 */
+
+/* 只设置 z-index，不强制定位 */
+.ant-select-dropdown {
+  z-index: 1050 !important;
+}

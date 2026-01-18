@@ -1,0 +1,38 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [
+    react(),
+  ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
+  },
+  define: {
+    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || 'http://localhost:8000/api/v1'),
+    'import.meta.env.VITE_DEBUG': JSON.stringify(process.env.VITE_DEBUG || 'true'),
+  },
+  optimizeDeps: {
+    include: ['monaco-editor'],
+    exclude: ['@monaco-editor/react']
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'monaco-editor': ['monaco-editor']
+        }
+      }
+    }
+  },
+  // Configure Monaco Editor worker paths
+  worker: {
+    format: 'es'
+  }
+})

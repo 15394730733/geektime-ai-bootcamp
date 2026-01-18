@@ -1,0 +1,452 @@
+{
+  "metadata": {
+    "review_date": "2026-01-15",
+    "reviewer": "Claude Code (Sonnet 4.5)",
+    "target_directory": "./w2/sth-db-query",
+    "total_files_reviewed": 15,
+    "backend_files": 10,
+    "frontend_files": 5,
+    "total_lines_of_code": 4500
+  },
+  "summary": {
+    "total_issues": 18,
+    "critical": 1,
+    "high": 5,
+    "medium": 8,
+    "low": 4,
+    "complexity_violations": 3,
+    "design_recommendations": 6
+  },
+  "quality_scores": {
+    "architecture_design": 7,
+    "code_quality": 6.5,
+    "complexity_control": 5.5,
+    "type_safety": 7.5,
+    "security": 8,
+    "maintainability": 6,
+    "testability": 6,
+    "documentation": 7,
+    "overall": 6.8
+  },
+  "issues": {
+    "critical": [
+      {
+        "id": "C-001",
+        "title": "函数复杂度严重超标 - DatabaseService._extract_database_metadata",
+        "location": "backend/app/services/database.py:529-650",
+        "category": "complexity",
+        "severity": "critical",
+        "metrics": {
+          "lines": 121,
+          "threshold": 150,
+          "cyclomatic_complexity": 20,
+          "complexity_threshold": 15,
+          "nesting_depth": 5,
+          "nesting_threshold": 6
+        },
+        "description": "函数承担过多职责：既获取表元数据，又获取视图元数据，还处理列信息",
+        "refactor_suggestions": [
+          "拆分为 3 个独立方法：_extract_tables_metadata(), _extract_views_metadata(), _fetch_columns()",
+          "提取公共逻辑到辅助方法",
+          "减少嵌套深度"
+        ],
+        "code_example": {
+          "before": "async def _extract_database_metadata(self, database_url: str, connection_id: str) -> List[Dict[str, Any]]: # 121 lines of complex code",
+          "after": "async def _extract_database_metadata(self, url: str, conn_id: str) -> List[Dict]:\n    conn = await self._get_connection(url)\n    try:\n        tables = await self._extract_tables_metadata(conn, conn_id)\n        views = await self._extract_views_metadata(conn, conn_id)\n        return tables + views\n    finally:\n        await self._return_connection(url, conn)"
+        }
+      }
+    ],
+    "high": [
+      {
+        "id": "H-001",
+        "title": "函数复杂度过高 - DatabaseService.execute_query",
+        "location": "backend/app/services/database.py:652-739",
+        "category": "complexity",
+        "severity": "high",
+        "metrics": {
+          "lines": 87,
+          "parameters": 5,
+          "cyclomatic_complexity": 12
+        },
+        "description": "查询执行方法复杂度较高，包含多个条件分支",
+        "suggestion": "提取查询执行逻辑到独立方法 _execute_query_internal()"
+      },
+      {
+        "id": "H-002",
+        "title": "违反单一职责原则 - DatabaseService 类",
+        "location": "backend/app/services/database.py:36-740",
+        "category": "architecture",
+        "severity": "high",
+        "metrics": {
+          "total_lines": 740,
+          "responsibilities": 6
+        },
+        "description": "DatabaseService 类承担过多职责：连接管理、CRUD 操作、连接测试、元数据提取、查询执行、验证逻辑",
+        "refactor_suggestions": [
+          "创建 DatabaseConnectionService：仅处理连接管理",
+          "创建 DatabaseMetadataService：仅处理元数据",
+          "创建 DatabaseQueryService：仅处理查询执行",
+          "创建 DatabaseValidator：验证逻辑",
+          "创建 DatabaseRepository：数据访问"
+        ]
+      },
+      {
+        "id": "H-003",
+        "title": "重复的类型转换逻辑",
+        "location": [
+          "backend/app/services/database.py:685-686",
+          "backend/app/services/query.py:189-190"
+        ],
+        "category": "dry_violation",
+        "severity": "high",
+        "similarity": 95,
+        "description": "asyncpg Record 转换逻辑在两处重复",
+        "suggestion": "提取到共享工具函数 convert_records_to_list() in app/utils/asyncpg_helpers.py"
+      },
+      {
+        "id": "H-004",
+        "title": "缺少类型注解 - ConnectionPoolManager.get_pool_status",
+        "location": "backend/app/core/connection_pool.py:183",
+        "category": "type_safety",
+        "severity": "high",
+        "description": "返回类型使用 'any' 而非具体类型 'Any'，应使用 TypedDict 定义结构",
+        "suggestion": "使用 TypedDict 定义 PoolStats 类型"
+      },
+      {
+        "id": "H-005",
+        "title": "TypeScript 组件缺少 Props 接口定义",
+        "location": "frontend/src/components/",
+        "category": "type_safety",
+        "severity": "high",
+        "description": "部分组件缺少严格的 Props 类型定义",
+        "suggestion": "为所有组件添加明确的 Props 接口"
+      }
+    ],
+    "medium": [
+      {
+        "id": "M-001",
+        "title": "魔术数字硬编码",
+        "location": "backend/app/core/connection_pool.py:95-99",
+        "category": "code_quality",
+        "severity": "medium",
+        "magic_numbers": [
+          "min_size=1",
+          "max_size=10",
+          "command_timeout=60",
+          "max_queries=50000",
+          "max_inactive_connection_lifetime=300.0"
+        ],
+        "suggestion": "移至配置文件 PoolSettings 类"
+      },
+      {
+        "id": "M-002",
+        "title": "重复的 URL 验证逻辑",
+        "location": [
+          "backend/app/schemas/database.py:17-32",
+          "backend/app/services/database.py:283-352"
+        ],
+        "category": "dry_violation",
+        "severity": "medium",
+        "similarity": 85,
+        "suggestion": "提取到共享验证器 DatabaseURLValidator"
+      },
+      {
+        "id": "M-003",
+        "title": "缺少抽象基类 (ABC)",
+        "location": "backend/app/services/",
+        "category": "extensibility",
+        "severity": "medium",
+        "description": "服务类没有抽象基类，难以进行单元测试和依赖注入",
+        "suggestion": "创建 IDatabaseService 接口，所有服务实现该接口"
+      },
+      {
+        "id": "M-004",
+        "title": "异常处理过于宽泛",
+        "location": "backend/app/services/query.py:124-135",
+        "category": "error_handling",
+        "severity": "medium",
+        "description": "使用 Exception 过于宽泛，应捕获具体异常类型",
+        "suggestion": "捕获 (asyncpg.PostgresError, asyncio.TimeoutError) 等具体异常"
+      },
+      {
+        "id": "M-005",
+        "title": "缺少日志记录的上下文信息",
+        "location": "多个文件",
+        "category": "maintainability",
+        "severity": "medium",
+        "description": "日志记录缺少结构化上下文",
+        "suggestion": "使用 extra 参数添加结构化上下文信息"
+      },
+      {
+        "id": "M-006",
+        "title": "前端组件状态管理复杂",
+        "location": "frontend/src/components/NaturalLanguageInput.tsx:38-44",
+        "category": "complexity",
+        "severity": "medium",
+        "state_variables": 6,
+        "description": "组件内部管理过多状态变量",
+        "suggestion": "使用 useReducer 合并相关状态"
+      },
+      {
+        "id": "M-007",
+        "title": "缺少输入验证的边界情况处理",
+        "location": "backend/app/core/security.py:31-36",
+        "category": "security",
+        "severity": "medium",
+        "description": "仅检查空字符串，应更早执行 strip() 检查",
+        "suggestion": "在验证开始处执行 if not sql or not sql.strip()"
+      },
+      {
+        "id": "M-008",
+        "title": "缺少性能监控的详细指标",
+        "location": "backend/app/core/performance.py",
+        "category": "maintainability",
+        "severity": "medium",
+        "description": "性能监控可能缺少详细的指标收集",
+        "suggestions": [
+          "添加连接池使用率监控",
+          "添加查询缓存命中率",
+          "添加平均响应时间统计"
+        ]
+      }
+    ],
+    "low": [
+      {
+        "id": "L-001",
+        "title": "命名不一致",
+        "location": "backend/app/models/metadata.py",
+        "category": "naming_convention",
+        "severity": "low",
+        "description": "db_schema vs schema 字段命名不一致"
+      },
+      {
+        "id": "L-002",
+        "title": "缺少文档字符串",
+        "location": "部分私有方法",
+        "category": "documentation",
+        "severity": "low",
+        "description": "某些私有方法缺少完整的 docstring"
+      },
+      {
+        "id": "L-003",
+        "title": "注释掉的代码/调试语句",
+        "location": "frontend/src/components/QueryEditor.tsx",
+        "category": "code_cleanup",
+        "severity": "low",
+        "examples": [
+          "console.log('QueryEditor rendering, value:', value, 'height:', height)",
+          "console.log('Monaco Editor mounted', editor)"
+        ],
+        "suggestion": "移除或使用正式的日志系统"
+      },
+      {
+        "id": "L-004",
+        "title": "内联样式过多",
+        "location": "frontend/src/components/QueryEditor.tsx",
+        "category": "react_best_practice",
+        "severity": "low",
+        "description": "大量内联样式应提取到 CSS 模块或 styled-components"
+      }
+    ]
+  },
+  "complexity_hotspots": [
+    {
+      "file": "services/database.py",
+      "function": "_extract_database_metadata",
+      "lines": 121,
+      "parameters": 2,
+      "cyclomatic_complexity": 20,
+      "severity": "critical"
+    },
+    {
+      "file": "services/database.py",
+      "function": "execute_query",
+      "lines": 87,
+      "parameters": 5,
+      "cyclomatic_complexity": 12,
+      "severity": "high"
+    },
+    {
+      "file": "services/query.py",
+      "function": "execute_query",
+      "lines": 82,
+      "parameters": 3,
+      "cyclomatic_complexity": 10,
+      "severity": "medium"
+    },
+    {
+      "file": "services/llm.py",
+      "function": "generate_and_validate_sql",
+      "lines": 67,
+      "parameters": 3,
+      "cyclomatic_complexity": 8,
+      "severity": "medium"
+    }
+  ],
+  "dry_violations": [
+    {
+      "similarity": 95,
+      "locations": [
+        "backend/app/services/database.py:685-686",
+        "backend/app/services/query.py:189-190"
+      ],
+      "description": "asyncpg Record 转换逻辑重复",
+      "suggestion": "提取到共享工具函数 convert_records_to_list()"
+    },
+    {
+      "similarity": 85,
+      "locations": [
+        "backend/app/schemas/database.py:17-32",
+        "backend/app/services/database.py:283-352"
+      ],
+      "description": "URL 验证逻辑重复",
+      "suggestion": "提取到 DatabaseURLValidator 类"
+    },
+    {
+      "similarity": 70,
+      "locations": ["多个 service 方法"],
+      "description": "错误处理模式重复",
+      "suggestion": "使用装饰器统一错误处理"
+    }
+  ],
+  "solid_analysis": {
+    "SRP": {
+      "status": "violated",
+      "description": "DatabaseService 承担过多职责（连接管理、元数据、查询、验证）",
+      "recommendation": "拆分为 5 个独立服务类，每个类 <200 行"
+    },
+    "OCP": {
+      "status": "good",
+      "description": "使用策略模式处理不同错误类型，易于扩展"
+    },
+    "LSP": {
+      "status": "good",
+      "description": "未发现子类型契约破坏"
+    },
+    "ISP": {
+      "status": "needs_improvement",
+      "description": "服务接口方法过多，应拆分为更小接口"
+    },
+    "DIP": {
+      "status": "partially_violated",
+      "description": "Service 直接依赖具体实现（DatabaseConnection 模型），而非接口"
+    }
+  },
+  "builder_pattern_recommendations": [
+    {
+      "class": "DatabaseCreate Schema",
+      "location": "backend/app/schemas/database.py",
+      "reason": "配置参数多，可选参数多",
+      "suggestion": "实现 DatabaseConfigBuilder 类支持流式接口"
+    },
+    {
+      "class": "QueryRequest 配置",
+      "location": "backend/app/schemas/query.py",
+      "reason": "配置可能包含多个可选参数",
+      "suggestion": "使用 Builder 模式构建复杂查询配置"
+    }
+  ],
+  "architecture_recommendations": {
+    "interface_design": {
+      "strengths": [
+        "RESTful API 设计清晰",
+        "使用 Pydantic 进行数据验证",
+        "前后端分离架构良好"
+      ],
+      "improvements": [
+        "缺少服务层抽象接口（ABC）",
+        "端点命名可以更语义化：POST /{name}/query → POST /databases/{name}/queries"
+      ]
+    },
+    "extensibility": {
+      "current_state": "硬编码的 PostgreSQL 支持难以扩展到其他数据库",
+      "recommendation": "使用数据库适配器模式和工厂模式支持多种数据库"
+    },
+    "modularity": {
+      "score": "good",
+      "strengths": ["前后端模块化清晰", "Core/Service/CRUD 分层合理", "组件复用性良好"],
+      "improvements": ["DatabaseService 过于庞大应拆分", "前端组件可以进一步模块化"]
+    }
+  },
+  "priority_actions": {
+    "immediate": [
+      {
+        "issue_id": "C-001",
+        "action": "重构 _extract_database_metadata 方法",
+        "details": "拆分为 3 个独立方法，减少复杂度"
+      },
+      {
+        "issue_id": "H-002",
+        "action": "拆分 DatabaseService 类",
+        "details": "创建 5 个独立服务类，遵循单一职责原则"
+      },
+      {
+        "issue_id": "H-003",
+        "action": "提取重复的类型转换逻辑",
+        "details": "创建 convert_records_to_list() 工具函数"
+      },
+      {
+        "issue_id": "H-004",
+        "action": "修复类型注解",
+        "details": "将 any 替换为 Any，使用 TypedDict 定义结构"
+      }
+    ],
+    "short_term": [
+      "移除魔术数字到配置文件",
+      "提取重复的 URL 验证逻辑",
+      "添加抽象基类（ABC）",
+      "使用 useReducer 简化前端状态管理"
+    ],
+    "long_term": [
+      "统一命名规范",
+      "移除调试 console.log",
+      "提取内联样式到 CSS 模块"
+    ]
+  },
+  "kiss_assessment": {
+    "over_engineering": "无明显过度工程化 ✅",
+    "simplification_suggestions": [
+      "简化 QueryService 类层次 - 考虑使用模块级函数或依赖注入",
+      "简化 QueryEditor Props - 使用对象合并相关属性"
+    ]
+  },
+  "security_review": {
+    "sql_injection_protection": "good",
+    "validation_mechanisms": "comprehensive",
+    "recommendations": [
+      "更早执行输入 strip() 检查",
+      "添加更多边界情况处理"
+    ]
+  },
+  "reviewed_files": {
+    "backend": [
+      "backend/app/main.py",
+      "backend/app/core/database.py",
+      "backend/app/core/connection_pool.py",
+      "backend/app/core/security.py",
+      "backend/app/services/database.py",
+      "backend/app/services/query.py",
+      "backend/app/services/llm.py",
+      "backend/app/models/database.py",
+      "backend/app/models/query.py",
+      "backend/app/schemas/database.py",
+      "backend/app/crud/database.py",
+      "backend/app/api/v1/endpoints/queries.py"
+    ],
+    "frontend": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/QueryEditor.tsx",
+      "frontend/src/components/NaturalLanguageInput.tsx"
+    ]
+  },
+  "review_standards": {
+    "python": ["PEP 8", "PEP 257", "PEP 484"],
+    "typescript": ["Official Style Guide", "React Best Practices"],
+    "principles": ["SOLID", "DRY", "KISS", "YAGNI"],
+    "thresholds": {
+      "max_function_lines": 150,
+      "max_parameters": 7,
+      "max_cyclomatic_complexity": 15
+    }
+  }
+}

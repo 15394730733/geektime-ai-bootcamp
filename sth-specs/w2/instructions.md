@@ -54,3 +54,41 @@ POST /api/v1/dbs/{name}/query/natural
   "prompt": "查询用户表的所有信息"
 }
 ```
+
+## 测试
+运行后端和前端，根据test.rest 用curl 测试后端已实现的路由；然后用playwright代开前端进行测试，任何测试问题，都请深度思考后再修复
+
+## ui ux界面优化 
+
+![alt text](image.png) query界面使用这样的页面布局
+
+其他可参考
+按照 apple website 的设计风格,think ultra hard,优化 UI 和 UX。  
+
+
+## code review
+/speckit.analyze 仔细 review w2/sth-db_query 代码，删除不用的代码，添加更多 unit test,以及寻找opportunity
+
+## 其他
+根据 @specs/001-db-query-tool/spec.md 和@specs/001-db-query-tool/plan.md 撰写详细介绍。
+
+## 添加 mysql db 支持
+参考./w2/sth-db_query/backend 中的 PostgresQL 实现，实现 MysQL的 metadata 提取和查询支持，同时自然语言生成sql 也支持MySQL。目前我本地有一个 test_db 数据库，密码在 .env 中。
+
+## 测试 mysql db 支持
+目前mysql 已经得到支持，在./w2/sth-db_query/fixtures/test.rest 中添加 MysQL db 支持的测试用例，然后运行测试。如果后端测试 ok，那么打开后端和前端，使用 playwright 测试前端，确保 MySQL db 的基本功能：
+
+- 添加 新的数据库 interview_db(url 为mysql://root:sth5805051@localhost:3306/interview_db)
+- 生成 sql，查询 interview_db, 并显示结果
+- 自然语言生成MySQL sql， 查询interview_db,并显示结果 
+
+
+## 重构
+帮我仔细查看 ./w2/db_query/backend的架构，目前因为添加了新的数据库，需要重新考虑整体的设计，最好设计一套interface，为以后添加更多数据库留有余地，不至于到处修改已有代码。设计要符合 Open-Close和 soLID原则，
+
+
+# 作业
+我需要继续实现如下几个功能，请基于以下功能点生成设计文档，然后放入.\w2\sth-db-query\FEATURE_EXPORT.md
+
+- 用户可以将查询结果导出为 CSV 文件、JSON 文件。目前页面上已经有了csv和json两个按钮，只需要实现对应的功能即可
+- 在sql执行按钮左边添加两个checkbox，默认自动选中，分别是csv和json，勾选哪个，那么在点击执行按钮后，就不光会查询出结果显示到页面上，而且还会自动导出对应格式的文件到本地
