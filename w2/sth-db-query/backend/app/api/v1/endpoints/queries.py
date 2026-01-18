@@ -24,12 +24,13 @@ async def execute_query(
 ):
     """Execute a SQL query."""
     try:
-        # Get database by id to get the name
+        # Get database by id to get connection details
         database = await database_service.get_database(db, id)
         if not database:
             raise HTTPException(status_code=404, detail=f"Database with id '{id}' not found")
         
-        result = await database_service.execute_query(db, database.name, query.sql)
+        # Execute query using database URL directly
+        result = await database_service.execute_query_by_url(database.url, query.sql)
         return APIResponse.success_response("Query executed successfully", result)
     except DatabaseQueryError as e:
         raise HTTPException(
@@ -43,16 +44,21 @@ async def execute_query(
         return APIResponse.error_response("Query execution failed", str(e))
 
 
-@router.post("/{name}/query/natural")
+@router.post("/{id}/query/natural")
 async def execute_natural_language_query(
-    name: str, 
+    id: str, 
     query: query_schema.NaturalLanguageQueryRequest,
     db: AsyncSession = Depends(get_db)
 ):
     """Generate SQL from natural language query without executing it."""
     try:
+        # Get database by id to get connection details
+        database = await database_service.get_database(db, id)
+        if not database:
+            raise HTTPException(status_code=404, detail=f"Database with id '{id}' not found")
+        
         # Get database metadata for context
-        metadata = await database_service.get_database_metadata(db, name)
+        metadata = await database_service.get_database_metadata(db, database.name)
         
         # Generate SQL from natural language
         generated_sql = await llm_service.generate_and_validate_sql(

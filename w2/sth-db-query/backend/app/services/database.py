@@ -622,3 +622,48 @@ class DatabaseService:
                 ],
                 technical_details=str(e)
             )
+
+    async def execute_query_by_url(self, database_url: str, sql: str, max_rows: int = 1000, timeout_seconds: int = 30) -> Dict[str, Any]:
+        """Execute a SQL query against the specified database URL using adapter."""
+        try:
+            # Create adapter for the database type
+            adapter = AdapterFactory.create_adapter(database_url)
+
+            # Get connection from pool
+            conn = await connection_pool_manager.get_connection(database_url)
+
+            try:
+                # Execute query using adapter
+                result = await adapter.execute_query(conn, sql, timeout_seconds)
+
+                # Apply max_rows truncation if needed
+                truncated = False
+                if len(result['rows']) > max_rows:
+                    result['rows'] = result['rows'][:max_rows]
+                    result['row_count'] = max_rows
+                    truncated = True
+
+                result['truncated'] = truncated
+                return result
+
+            except Exception as e:
+                # Re-raise database-specific errors
+                raise
+
+            finally:
+                # Return connection to pool
+                await connection_pool_manager.return_connection(database_url, conn)
+
+        except DatabaseQueryError:
+            raise
+        except Exception as e:
+            raise DatabaseQueryError(
+                message=f"Query execution failed: {str(e)}",
+                user_message="An unexpected error occurred while executing your query.",
+                suggestions=[
+                    "Check your SQL syntax",
+                    "Verify the database connection is still active",
+                    "Try a simpler query to test the connection"
+                ],
+                technical_details=str(e)
+            )
