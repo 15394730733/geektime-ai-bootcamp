@@ -190,7 +190,7 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
               }}
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete?.(database.name);
+                onDelete?.(database.id);
               }}
             >
               <Button

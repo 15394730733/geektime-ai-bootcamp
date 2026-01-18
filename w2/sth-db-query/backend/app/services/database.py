@@ -17,7 +17,7 @@ import time
 logger = logging.getLogger(__name__)
 
 from app.crud.database import (
-    get_databases, get_database, create_database, update_database, delete_database,
+    get_databases, get_database, get_database_by_name, create_database, update_database, delete_database,
     get_database_metadata, create_database_metadata, delete_database_metadata
 )
 from app.models.database import DatabaseConnection
@@ -47,9 +47,14 @@ class DatabaseService:
         connections = await get_databases(db)
         return [Database.model_validate(conn) for conn in connections]
 
-    async def get_database(self, db: AsyncSession, name: str) -> Optional[Database]:
+    async def get_database(self, db: AsyncSession, id: str) -> Optional[Database]:
+        """Get a specific database connection by id."""
+        connection = await get_database(db, id)
+        return Database.model_validate(connection) if connection else None
+
+    async def get_database_by_name(self, db: AsyncSession, name: str) -> Optional[Database]:
         """Get a specific database connection by name."""
-        connection = await get_database(db, name)
+        connection = await get_database_by_name(db, name)
         return Database.model_validate(connection) if connection else None
 
     async def create_database(self, db: AsyncSession, database_data: DatabaseCreate) -> Database:
@@ -82,13 +87,13 @@ class DatabaseService:
                 technical_details=str(e)
             )
 
-    async def update_database(self, db: AsyncSession, name: str, database_data: DatabaseCreate) -> Optional[Database]:
+    async def update_database(self, db: AsyncSession, id: str, database_data: DatabaseCreate) -> Optional[Database]:
         """Update an existing database connection."""
         # Validate the database data
-        await self._validate_database_data(db, database_data, exclude_name=name)
+        await self._validate_database_data(db, database_data, exclude_id=id)
 
         # Get existing connection
-        existing = await get_database(db, name)
+        existing = await get_database(db, id)
         if not existing:
             return None
 
@@ -97,19 +102,19 @@ class DatabaseService:
         await self._validate_connection_if_changed(database_data.url, url_changed, existing.url)
 
         # Update the database connection
-        connection = await update_database(db, name, database_data)
+        connection = await update_database(db, id, database_data)
         if not connection:
             return None
 
         # Refresh metadata if URL changed to ensure metadata persistence
-        await self._refresh_metadata_if_url_changed(db, connection, url_changed, name)
+        await self._refresh_metadata_if_url_changed(db, connection, url_changed, existing.name)
 
         return Database.model_validate(connection)
 
-    async def update_database_partial(self, db: AsyncSession, name: str, update_data: DatabaseUpdate) -> Optional[Database]:
+    async def update_database_partial(self, db: AsyncSession, id: str, update_data: DatabaseUpdate) -> Optional[Database]:
         """Update an existing database connection with partial data."""
         # Get existing connection
-        existing = await get_database(db, name)
+        existing = await get_database(db, id)
         if not existing:
             return None
 
@@ -129,7 +134,7 @@ class DatabaseService:
         )
 
         # Use the main update method
-        return await self.update_database(db, name, full_update_data)
+        return await self.update_database(db, id, full_update_data)
 
     async def _validate_connection_if_changed(self, new_url: str, url_changed: bool, old_url: str):
         """
@@ -172,9 +177,9 @@ class DatabaseService:
                 # Log warning but don't fail the update
                 logger.warning(f"Failed to refresh metadata after database update for '{name}': {str(e)}")
 
-    async def delete_database(self, db: AsyncSession, name: str) -> bool:
+    async def delete_database(self, db: AsyncSession, id: str) -> bool:
         """Delete a database connection."""
-        return await delete_database(db, name)
+        return await delete_database(db, id)
 
     async def test_connection(self, url: str) -> Dict[str, Any]:
         """Test database connection and return status."""
@@ -272,13 +277,13 @@ class DatabaseService:
         except Exception as e:
             raise DatabaseServiceError(f"Failed to force metadata refresh for '{name}': {str(e)}")
 
-    async def _validate_database_data(self, db: AsyncSession, data: DatabaseCreate, exclude_name: Optional[str] = None):
+    async def _validate_database_data(self, db: AsyncSession, data: DatabaseCreate, exclude_id: Optional[str] = None):
         """Validate database connection data."""
         # Validate URL format
         self._validate_url_format(data.url)
 
         # Check name uniqueness
-        await self._validate_name_uniqueness(db, data.name, exclude_name)
+        await self._validate_name_uniqueness(db, data.name, exclude_id)
 
         # Validate name format
         self._validate_name_format(data.name)
@@ -362,12 +367,12 @@ class DatabaseService:
                 technical_details=str(e)
             )
 
-    async def _validate_name_uniqueness(self, db: AsyncSession, name: str, exclude_name: Optional[str] = None):
+    async def _validate_name_uniqueness(self, db: AsyncSession, name: str, exclude_id: Optional[str] = None):
         """Validate that database name is unique."""
         query = select(DatabaseConnection).where(DatabaseConnection.name == name)
 
-        if exclude_name:
-            query = query.where(DatabaseConnection.name != exclude_name)
+        if exclude_id:
+            query = query.where(DatabaseConnection.id != exclude_id)
 
         result = await db.execute(query)
         existing = result.scalar_one_or_none()

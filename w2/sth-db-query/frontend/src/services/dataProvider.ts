@@ -62,8 +62,8 @@ export const dataProvider: DataProvider = {
 
   create: async ({ resource, variables }) => {
     if (resource === "dbs") {
-      // For databases, use PUT /{name} instead of POST
-      const response = await axiosInstance.put(`/${resource}/${variables.name}`, variables);
+      // For databases, use POST / to create
+      const response = await axiosInstance.post(`/${resource}/`, variables);
       return {
         data: response.data.data,
       };
@@ -73,7 +73,7 @@ export const dataProvider: DataProvider = {
 
   update: async ({ resource, id, variables }) => {
     if (resource === "dbs") {
-      // For databases, use PUT /{name} for updates too
+      // For databases, use PUT /{id} for updates
       const response = await axiosInstance.put(`/${resource}/${id}`, variables);
       return {
         data: response.data.data,

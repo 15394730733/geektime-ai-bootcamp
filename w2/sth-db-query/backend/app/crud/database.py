@@ -18,7 +18,15 @@ async def get_databases(db: AsyncSession) -> List[DatabaseConnection]:
     return result.scalars().all()
 
 
-async def get_database(db: AsyncSession, name: str) -> Optional[DatabaseConnection]:
+async def get_database(db: AsyncSession, id: str) -> Optional[DatabaseConnection]:
+    """Get a database connection by id."""
+    result = await db.execute(
+        select(DatabaseConnection).where(DatabaseConnection.id == id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_database_by_name(db: AsyncSession, name: str) -> Optional[DatabaseConnection]:
     """Get a database connection by name."""
     result = await db.execute(
         select(DatabaseConnection).where(DatabaseConnection.name == name)
@@ -38,9 +46,9 @@ async def create_database(db: AsyncSession, database: DatabaseCreate) -> Databas
     return db_obj
 
 
-async def update_database(db: AsyncSession, name: str, database: DatabaseCreate) -> Optional[DatabaseConnection]:
+async def update_database(db: AsyncSession, id: str, database: DatabaseCreate) -> Optional[DatabaseConnection]:
     """Update a database connection."""
-    db_obj = await get_database(db, name)
+    db_obj = await get_database(db, id)
     if db_obj:
         for field, value in database.model_dump().items():
             setattr(db_obj, field, value)
@@ -49,9 +57,9 @@ async def update_database(db: AsyncSession, name: str, database: DatabaseCreate)
     return db_obj
 
 
-async def delete_database(db: AsyncSession, name: str) -> bool:
+async def delete_database(db: AsyncSession, id: str) -> bool:
     """Delete a database connection."""
-    db_obj = await get_database(db, name)
+    db_obj = await get_database(db, id)
     if db_obj:
         await db.delete(db_obj)
         await db.commit()
@@ -83,6 +91,7 @@ async def create_database_metadata(db: AsyncSession, metadata_list: List[Dict[st
             **metadata
         )
         db.add(metadata_obj)
+        await db.flush()  # Flush to ensure each object gets proper bindings
         metadata_objects.append(metadata_obj)
 
     await db.commit()

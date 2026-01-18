@@ -148,33 +148,31 @@ class APIClient {
   }
 
   async createDatabase(data: Omit<DatabaseConnection, 'id' | 'createdAt' | 'updatedAt'>): Promise<DatabaseConnection> {
-    const response = await this.client.put<APIResponse<DatabaseConnection>>(`/dbs/${data.name}`, data);
+    const response = await this.client.post<APIResponse<DatabaseConnection>>('/dbs/', data);
     if (!response.data.success) {
       throw new Error(response.data.message);
     }
     return response.data.data!;
   }
 
-  async updateDatabase(name: string, data: Partial<DatabaseConnection>): Promise<DatabaseConnection> {
-    // Use new name if provided, otherwise use old name
-    const targetName = data.name || name;
-    const response = await this.client.put<APIResponse<DatabaseConnection>>(`/dbs/${targetName}`, data);
+  async updateDatabase(id: string, data: Partial<DatabaseConnection>): Promise<DatabaseConnection> {
+    const response = await this.client.put<APIResponse<DatabaseConnection>>(`/dbs/${id}`, data);
     if (!response.data.success) {
       throw new Error(response.data.message);
     }
     return response.data.data!;
   }
 
-  async deleteDatabase(name: string): Promise<void> {
-    const response = await this.client.delete<APIResponse>(`/dbs/${name}`);
+  async deleteDatabase(id: string): Promise<void> {
+    const response = await this.client.delete<APIResponse>(`/dbs/${id}`);
     if (!response.data.success) {
       throw new Error(response.data.message);
     }
   }
 
   // Database metadata
-  async getDatabaseMetadata(name: string): Promise<DatabaseMetadata> {
-    const response = await this.client.get<APIResponse<DatabaseMetadata>>(`/dbs/${name}`);
+  async getDatabaseMetadata(id: string): Promise<DatabaseMetadata> {
+    const response = await this.client.get<APIResponse<DatabaseMetadata>>(`/dbs/${id}`);
     if (!response.data.success) {
       throw new Error(response.data.message);
     }
@@ -182,8 +180,8 @@ class APIClient {
   }
 
   // Refresh database metadata
-  async refreshDatabaseMetadata(name: string): Promise<DatabaseMetadata> {
-    const response = await this.client.post<APIResponse<DatabaseMetadata>>(`/dbs/${name}/refresh`);
+  async refreshDatabaseMetadata(id: string): Promise<DatabaseMetadata> {
+    const response = await this.client.post<APIResponse<DatabaseMetadata>>(`/dbs/${id}/refresh`);
     if (!response.data.success) {
       throw new Error(response.data.message);
     }
@@ -191,12 +189,12 @@ class APIClient {
   }
 
   // Query execution
-  async executeQuery(databaseName: string, query: QueryRequest): Promise<QueryResult> {
+  async executeQuery(id: string, query: QueryRequest): Promise<QueryResult> {
     console.log('=== API.executeQuery called ===');
-    console.log('Database name:', databaseName);
+    console.log('Database id:', id);
     console.log('Query:', query.sql);
     
-    const url = `/dbs/${databaseName}/query`;
+    const url = `/dbs/${id}/query`;
     console.log('Full URL:', url);
     
     const response = await this.client.post<APIResponse<QueryResult>>(
@@ -210,11 +208,11 @@ class APIClient {
   }
 
   async executeNaturalLanguageQuery(
-    databaseName: string,
+    id: string,
     query: NaturalLanguageQueryRequest
   ): Promise<NaturalLanguageQueryResult> {
     const response = await this.client.post<APIResponse<NaturalLanguageQueryResult>>(
-      `/dbs/${databaseName}/query/natural`,
+      `/dbs/${id}/query/natural`,
       query
     );
     if (!response.data.success) {

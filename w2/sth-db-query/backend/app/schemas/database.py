@@ -16,18 +16,25 @@ class DatabaseBase(BaseModel):
 
     @field_validator('url')
     @classmethod
-    def validate_postgresql_url(cls, v: str) -> str:
-        """Validate PostgreSQL connection URL format."""
-        # Basic PostgreSQL URL pattern validation
-        if not v.startswith(('postgresql://', 'postgres://')):
-            raise ValueError('URL must be a valid PostgreSQL connection string starting with postgresql:// or postgres://')
+    def validate_database_url(cls, v: str) -> str:
+        """Validate database connection URL format (PostgreSQL or MySQL)."""
+        # Check if URL starts with a supported scheme
+        if not v.startswith(('postgresql://', 'postgres://', 'mysql://')):
+            raise ValueError('URL must be a valid database connection string starting with postgresql://, postgres://, or mysql://')
 
-        # Extract and validate basic components
-        url_pattern = r'^(postgresql|postgres)://([^:/@]+)(?::([^@]*))?@([^:/]+)(?::(\d+))?/([^?]+)(?:\?.*)?$'
-        match = re.match(url_pattern, v)
+        # Validate PostgreSQL URL format
+        if v.startswith(('postgresql://', 'postgres://')):
+            url_pattern = r'^(postgresql|postgres)://([^:/@]+)(?::([^@]*))?@([^:/]+)(?::(\d+))?/([^?]+)(?:\?.*)?$'
+            match = re.match(url_pattern, v)
+            if not match:
+                raise ValueError('Invalid PostgreSQL URL format. Expected: postgresql://user:pass@host:port/database')
 
-        if not match:
-            raise ValueError('Invalid PostgreSQL URL format. Expected: postgresql://user:pass@host:port/database')
+        # Validate MySQL URL format
+        elif v.startswith('mysql://'):
+            url_pattern = r'^mysql://([^:/@]+)(?::([^@]*))?@([^:/]+)(?::(\d+))?/([^?]+)(?:\?.*)?$'
+            match = re.match(url_pattern, v)
+            if not match:
+                raise ValueError('Invalid MySQL URL format. Expected: mysql://user:pass@host:port/database')
 
         return v
 
@@ -53,21 +60,28 @@ class DatabaseUpdate(BaseModel):
 
     @field_validator('url')
     @classmethod
-    def validate_postgresql_url(cls, v: Optional[str]) -> Optional[str]:
-        """Validate PostgreSQL connection URL format."""
+    def validate_database_url_optional(cls, v: Optional[str]) -> Optional[str]:
+        """Validate database connection URL format (PostgreSQL or MySQL)."""
         if v is None:
             return v
-            
-        # Basic PostgreSQL URL pattern validation
-        if not v.startswith(('postgresql://', 'postgres://')):
-            raise ValueError('URL must be a valid PostgreSQL connection string starting with postgresql:// or postgres://')
 
-        # Extract and validate basic components
-        url_pattern = r'^(postgresql|postgres)://([^:/@]+)(?::([^@]*))?@([^:/]+)(?::(\d+))?/([^?]+)(?:\?.*)?$'
-        match = re.match(url_pattern, v)
+        # Check if URL starts with a supported scheme
+        if not v.startswith(('postgresql://', 'postgres://', 'mysql://')):
+            raise ValueError('URL must be a valid database connection string starting with postgresql://, postgres://, or mysql://')
 
-        if not match:
-            raise ValueError('Invalid PostgreSQL URL format. Expected: postgresql://user:pass@host:port/database')
+        # Validate PostgreSQL URL format
+        if v.startswith(('postgresql://', 'postgres://')):
+            url_pattern = r'^(postgresql|postgres)://([^:/@]+)(?::([^@]*))?@([^:/]+)(?::(\d+))?/([^?]+)(?:\?.*)?$'
+            match = re.match(url_pattern, v)
+            if not match:
+                raise ValueError('Invalid PostgreSQL URL format. Expected: postgresql://user:pass@host:port/database')
+
+        # Validate MySQL URL format
+        elif v.startswith('mysql://'):
+            url_pattern = r'^mysql://([^:/@]+)(?::([^@]*))?@([^:/]+)(?::(\d+))?/([^?]+)(?:\?.*)?$'
+            match = re.match(url_pattern, v)
+            if not match:
+                raise ValueError('Invalid MySQL URL format. Expected: mysql://user:pass@host:port/database')
 
         return v
 

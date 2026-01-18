@@ -39,7 +39,7 @@ export const DatabaseListPage = () => {
   const handleDelete = async (id: string) => {
     try {
       // Find the database to delete
-      const dbToDelete = state.databases.find(db => db.name === id);
+      const dbToDelete = state.databases.find(db => db.id === id);
       if (!dbToDelete) {
         message.error('Database not found');
         return;
@@ -56,18 +56,21 @@ export const DatabaseListPage = () => {
     }
   };
 
-  const handleDatabaseClick = (databaseName: string) => {
+  const handleDatabaseClick = (databaseId: string) => {
+    // Find the database by id to get its name
+    const database = state.databases.find(db => db.id === databaseId);
+    const databaseName = database?.name || databaseId;
     // Navigate to query page with database name as URL parameter
     navigate(`/query?db=${encodeURIComponent(databaseName)}`);
   };
 
-  const handleRefreshDatabase = async (databaseName: string) => {
+  const handleRefreshDatabase = async (databaseId: string) => {
     try {
       // Refresh the database metadata regardless of whether it's selected
-      await actions.refreshDatabaseMetadata(databaseName);
-      message.success(`Database ${databaseName} refreshed successfully`);
+      await actions.refreshDatabaseMetadata(databaseId);
+      message.success(`Database refreshed successfully`);
     } catch (error: any) {
-      message.error(error.message || `Failed to refresh database ${databaseName}`);
+      message.error(error.message || `Failed to refresh database`);
     }
   };
 

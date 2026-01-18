@@ -28,10 +28,11 @@ export interface DatabaseFormProps {
   showTestConnection?: boolean;
 }
 
-const validatePostgreSQLUrl = (url: string): boolean => {
-  // Basic PostgreSQL URL validation
+const validateDatabaseUrl = (url: string): boolean => {
+  // Validate PostgreSQL or MySQL URL
   const postgresUrlPattern = /^postgresql:\/\/[^:]+:[^@]+@[^:]+:\d+\/[^\/]+$/;
-  return postgresUrlPattern.test(url);
+  const mysqlUrlPattern = /^mysql:\/\/[^:]+:[^@]+@[^:]+:\d+\/[^\/]+$/;
+  return postgresUrlPattern.test(url) || mysqlUrlPattern.test(url);
 };
 
 export const DatabaseForm: React.FC<DatabaseFormProps> = ({
@@ -96,12 +97,12 @@ export const DatabaseForm: React.FC<DatabaseFormProps> = ({
     return Promise.resolve();
   };
 
-  const validateDatabaseUrl = (_: any, value: string) => {
+  const validateDatabaseUrlField = (_: any, value: string) => {
     if (!value) {
       return Promise.reject(new Error('Database URL is required'));
     }
-    if (!validatePostgreSQLUrl(value)) {
-      return Promise.reject(new Error('Please enter a valid PostgreSQL URL (postgresql://user:password@host:port/database)'));
+    if (!validateDatabaseUrl(value)) {
+      return Promise.reject(new Error('Please enter a valid database URL (postgresql://user:password@host:port/database or mysql://user:password@host:port/database)'));
     }
     return Promise.resolve();
   };
@@ -165,11 +166,11 @@ export const DatabaseForm: React.FC<DatabaseFormProps> = ({
         <Form.Item
           label="Database URL"
           name="url"
-          rules={[{ validator: validateDatabaseUrl }]}
-          extra="PostgreSQL connection string (postgresql://user:password@host:port/database)"
+          rules={[{ validator: validateDatabaseUrlField }]}
+          extra="Database connection string (postgresql://user:password@host:port/database or mysql://user:password@host:port/database)"
         >
           <Input
-            placeholder="postgresql://username:password@localhost:5432/database_name"
+            placeholder="postgresql://username:password@localhost:5432/database_name or mysql://username:password@localhost:3306/database_name"
             disabled={loading}
           />
         </Form.Item>

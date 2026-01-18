@@ -16,15 +16,20 @@ router = APIRouter()
 database_service = DatabaseService()
 
 
-@router.post("/{name}/query")
+@router.post("/{id}/query")
 async def execute_query(
-    name: str,
+    id: str,
     query: query_schema.QueryRequest,
     db: AsyncSession = Depends(get_db)
 ):
     """Execute a SQL query."""
     try:
-        result = await database_service.execute_query(db, name, query.sql)
+        # Get database by id to get the name
+        database = await database_service.get_database(db, id)
+        if not database:
+            raise HTTPException(status_code=404, detail=f"Database with id '{id}' not found")
+        
+        result = await database_service.execute_query(db, database.name, query.sql)
         return APIResponse.success_response("Query executed successfully", result)
     except DatabaseQueryError as e:
         raise HTTPException(

@@ -74,16 +74,16 @@ async def create_database(
         raise HTTPException(status_code=500, detail=f"Failed to create database: {str(e)}")
 
 
-@router.put("/{name}")
+@router.put("/{id}")
 async def create_or_update_database(
-    name: str,
+    id: str,
     database: dict,  # 使用dict来接受任意字段
     db: AsyncSession = Depends(get_db)
 ):
     """Create or update a database connection."""
     try:
         # Check if database already exists
-        existing = await database_service.get_database(db, name)
+        existing = await database_service.get_database(db, id)
 
         if existing:
             # Update existing database - create DatabaseUpdate from dict
@@ -92,29 +92,18 @@ async def create_or_update_database(
                 url=database.get('url'),
                 description=database.get('description')
             )
-            result = await database_service.update_database_partial(db, name, update_data)
+            result = await database_service.update_database_partial(db, id, update_data)
             if not result:
-                raise HTTPException(status_code=404, detail=f"Database '{name}' not found")
+                raise HTTPException(status_code=404, detail=f"Database with id '{id}' not found")
             return APIResponse.success_response("Database updated successfully", result)
         else:
             # Create new database - validate required fields
-            if 'name' not in database:
-                database['name'] = name  # Use name from URL if not provided
-                
-            # Validate required fields for creation
             required_fields = ['name', 'url']
             missing_fields = [field for field in required_fields if not database.get(field)]
             if missing_fields:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Missing required fields for database creation: {', '.join(missing_fields)}"
-                )
-                
-            # Validate that the name in URL matches the name in data
-            if name != database['name']:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Database name in URL '{name}' must match name in request body '{database['name']}'"
                 )
 
             # Create DatabaseCreate object
@@ -130,10 +119,10 @@ async def create_or_update_database(
             # Extract and cache metadata
             try:
                 await database_service.refresh_database_metadata(db, result.url, result.id)
-                logger.info(f"Successfully extracted metadata for database '{name}'")
+                logger.info(f"Successfully extracted metadata for database '{result.name}'")
             except Exception as e:
                 # Log error but don't fail the database creation
-                logger.warning(f"Failed to extract metadata for database '{name}': {str(e)}")
+                logger.warning(f"Failed to extract metadata for database '{result.name}': {str(e)}")
 
             return APIResponse.success_response("Database created successfully", result)
 
@@ -151,17 +140,17 @@ async def create_or_update_database(
         raise HTTPException(status_code=500, detail=f"Failed to create/update database: {str(e)}")
 
 
-@router.patch("/{name}")
+@router.patch("/{id}")
 async def update_database(
-    name: str,
+    id: str,
     database: database_schema.DatabaseUpdate,
     db: AsyncSession = Depends(get_db)
 ):
     """Update an existing database connection with partial data."""
     try:
-        result = await database_service.update_database_partial(db, name, database)
+        result = await database_service.update_database_partial(db, id, database)
         if not result:
-            raise HTTPException(status_code=404, detail=f"Database '{name}' not found")
+            raise HTTPException(status_code=404, detail=f"Database with id '{id}' not found")
         return APIResponse.success_response("Database updated successfully", result)
 
     except DatabaseQueryError as e:
@@ -176,32 +165,30 @@ async def update_database(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update database: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create/update database: {str(e)}")
 
 
-@router.get("/{name}")
-async def get_database_metadata(name: str, db: AsyncSession = Depends(get_db)):
+@router.get("/{id}")
+async def get_database_metadata(id: str, db: AsyncSession = Depends(get_db)):
     """Get metadata for a specific database."""
     try:
         # First get the database connection to ensure it exists
-        database = await database_service.get_database(db, name)
+        database = await database_service.get_database(db, id)
         if not database:
-            raise HTTPException(status_code=404, detail=f"Database '{name}' not found")
+            raise HTTPException(status_code=404, detail=f"Database with id '{id}' not found")
 
         # Get metadata for this database
-        metadata = await database_service.get_database_metadata(db, name)
+        metadata = await database_service.get_database_metadata(db, database.name)
 
         # If no metadata exists, try to refresh it
         if not metadata.get('tables') and not metadata.get('views'):
             try:
-                logger.info(f"No metadata found for database '{name}', attempting to refresh...")
+                logger.info(f"No metadata found for database '{database.name}', attempting to refresh...")
                 await database_service.refresh_database_metadata(db, database.url, database.id)
                 # Get metadata again after refresh
-                metadata = await database_service.get_database_metadata(db, name)
-                logger.info(f"Successfully refreshed metadata for database '{name}'")
+                metadata = await database_service.get_database_metadata(db, database.name)
+                logger.info(f"Successfully refreshed metadata for database '{database.name}'")
             except Exception as refresh_error:
-                logger.warning(f"Failed to refresh metadata for database '{name}': {str(refresh_error)}")
+                logger.warning(f"Failed to refresh metadata for database '{database.name}': {str(refresh_error)}")
                 # Don't fail the request, just return empty metadata
 
         return APIResponse.success_response("Database metadata retrieved successfully", metadata)
@@ -211,27 +198,27 @@ async def get_database_metadata(name: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Failed to get database metadata: {str(e)}")
 
 
-@router.post("/{name}/refresh")
-async def refresh_database_metadata(name: str, db: AsyncSession = Depends(get_db)):
+@router.post("/{id}/refresh")
+async def refresh_database_metadata(id: str, db: AsyncSession = Depends(get_db)):
     """Refresh metadata for a specific database."""
     try:
         # First get the database connection to ensure it exists
-        database = await database_service.get_database(db, name)
+        database = await database_service.get_database(db, id)
         if not database:
-            raise HTTPException(status_code=404, detail=f"Database '{name}' not found")
+            raise HTTPException(status_code=404, detail=f"Database with id '{id}' not found")
 
         # Refresh metadata
         metadata = await database_service.refresh_database_metadata(db, database.url, database.id)
 
-        return APIResponse.success_response(f"Database '{name}' metadata refreshed successfully", metadata)
+        return APIResponse.success_response(f"Database '{database.name}' metadata refreshed successfully", metadata)
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to refresh database metadata: {str(e)}")
 
 
-@router.post("/{name}/metadata/ensure")
-async def ensure_metadata_persistence(name: str, db: AsyncSession = Depends(get_db)):
+@router.post("/{id}/metadata/ensure")
+async def ensure_metadata_persistence(id: str, db: AsyncSession = Depends(get_db)):
     """
     Ensure metadata is persisted for a database connection.
     
@@ -239,7 +226,12 @@ async def ensure_metadata_persistence(name: str, db: AsyncSession = Depends(get_
     ensuring compliance with requirement 8.3: metadata updates are saved to SQLite database.
     """
     try:
-        result = await database_service.ensure_metadata_persistence(db, name)
+        # Get database by id
+        database = await database_service.get_database(db, id)
+        if not database:
+            raise HTTPException(status_code=404, detail=f"Database with id '{id}' not found")
+        
+        result = await database_service.ensure_metadata_persistence(db, database.name)
         return APIResponse.success_response("Metadata persistence ensured", result)
     except DatabaseQueryError as e:
         raise HTTPException(
@@ -255,8 +247,8 @@ async def ensure_metadata_persistence(name: str, db: AsyncSession = Depends(get_
         raise HTTPException(status_code=500, detail=f"Failed to ensure metadata persistence: {str(e)}")
 
 
-@router.post("/{name}/metadata/refresh")
-async def force_metadata_refresh(name: str, db: AsyncSession = Depends(get_db)):
+@router.post("/{id}/metadata/refresh")
+async def force_metadata_refresh(id: str, db: AsyncSession = Depends(get_db)):
     """
     Force a metadata refresh for a database connection.
     
@@ -264,7 +256,12 @@ async def force_metadata_refresh(name: str, db: AsyncSession = Depends(get_db)):
     and persisted in the metadata store.
     """
     try:
-        result = await database_service.force_metadata_refresh(db, name)
+        # Get database by id
+        database = await database_service.get_database(db, id)
+        if not database:
+            raise HTTPException(status_code=404, detail=f"Database with id '{id}' not found")
+        
+        result = await database_service.force_metadata_refresh(db, database.name)
         return APIResponse.success_response("Metadata refreshed successfully", result)
     except DatabaseQueryError as e:
         raise HTTPException(
@@ -328,14 +325,19 @@ async def test_database_connection(
         raise HTTPException(status_code=500, detail=f"Failed to test database connection: {str(e)}")
 
 
-@router.delete("/{name}")
-async def delete_database(name: str, db: AsyncSession = Depends(get_db)):
+@router.delete("/{id}")
+async def delete_database(id: str, db: AsyncSession = Depends(get_db)):
     """Delete a database connection."""
     try:
-        success = await database_service.delete_database(db, name)
+        # Get database by id first to get the name for logging
+        database = await database_service.get_database(db, id)
+        if not database:
+            raise HTTPException(status_code=404, detail=f"Database with id '{id}' not found")
+        
+        success = await database_service.delete_database(db, id)
         if not success:
-            raise HTTPException(status_code=404, detail=f"Database '{name}' not found")
-        return APIResponse.success_response(f"Database '{name}' deleted successfully")
+            raise HTTPException(status_code=404, detail=f"Database with id '{id}' not found")
+        return APIResponse.success_response(f"Database '{database.name}' deleted successfully")
     except HTTPException:
         raise
     except Exception as e:

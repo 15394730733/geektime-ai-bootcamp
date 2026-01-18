@@ -69,5 +69,19 @@ POST /api/v1/dbs/{name}/query/natural
 ## code review
 /speckit.analyze 仔细 review w2/sth-db_query 代码，删除不用的代码，添加更多 unit test,以及寻找opportunity
 
-# 其他
+## 其他
 根据 @specs/001-db-query-tool/spec.md 和@specs/001-db-query-tool/plan.md 撰写详细介绍。
+
+## 添加 mysql db 支持
+参考./w2/sth-db_query/backend 中的 PostgresQL 实现，实现 MysQL的 metadata 提取和查询支持，同时自然语言生成sql 也支持MySQL。目前我本地有一个 test_db 数据库，密码在 .env 中。
+
+## 测试 mysql db 支持
+目前mysql 已经得到支持，在./w2/sth-db_query/fixtures/test.rest 中添加 MysQL db 支持的测试用例，然后运行测试。如果后端测试 ok，那么打开后端和前端，使用 playwright 测试前端，确保 MySQL db 的基本功能：
+
+- 添加 新的数据库 interview_db(url 为mysql://root:sth5805051@localhost:3306/interview_db)
+- 生成 sql，查询 interview_db, 并显示结果
+- 自然语言生成MySQL sql， 查询interview_db,并显示结果 
+
+
+## 重构
+帮我仔细查看 ./w2/db_query/backend的架构，目前因为添加了新的数据库，需要重新考虑整体的设计，最好设计一套interface，为以后添加更多数据库留有余地，不至于到处修改已有代码。设计要符合 Open-Close和 soLID原则，

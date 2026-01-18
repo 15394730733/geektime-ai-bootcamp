@@ -12,7 +12,7 @@ import { apiClient, DatabaseConnection, DatabaseMetadata } from '../services/api
 // State interface
 interface AppState {
   databases: DatabaseConnection[];
-  selectedDatabase: string | null;
+  selectedDatabase: string | null;  // 存储 id
   metadata: DatabaseMetadata | null;
   loading: {
     databases: boolean;
@@ -26,12 +26,12 @@ interface AppState {
 type AppAction =
   | { type: 'SET_LOADING'; payload: { key: keyof AppState['loading']; value: boolean } }
   | { type: 'SET_DATABASES'; payload: DatabaseConnection[] }
-  | { type: 'SET_SELECTED_DATABASE'; payload: string | null }
+  | { type: 'SET_SELECTED_DATABASE'; payload: string | null }  // id
   | { type: 'SET_METADATA'; payload: DatabaseMetadata | null }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'ADD_DATABASE'; payload: DatabaseConnection }
   | { type: 'UPDATE_DATABASE'; payload: DatabaseConnection }
-  | { type: 'REMOVE_DATABASE'; payload: string }
+  | { type: 'REMOVE_DATABASE'; payload: string }  // id
   | { type: 'START_DATABASE_SWITCH' }
   | { type: 'COMPLETE_DATABASE_SWITCH' };
 
@@ -95,14 +95,14 @@ function appStateReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         databases: state.databases.map(db =>
-          db.name === action.payload.name ? action.payload : db
+          db.id === action.payload.id ? action.payload : db
         ),
       };
     case 'REMOVE_DATABASE':
       return {
         ...state,
-        databases: state.databases.filter(db => db.name !== action.payload),
-        // Clear selection if the removed database was selected
+        databases: state.databases.filter(db => db.id !== action.payload),
+        // Clear selection if removed database was selected
         selectedDatabase: state.selectedDatabase === action.payload ? null : state.selectedDatabase,
         metadata: state.selectedDatabase === action.payload ? null : state.metadata,
       };
@@ -175,16 +175,16 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
     }
   };
 
-  const loadMetadata = async (databaseName: string) => {
-    console.log('Loading metadata for database:', databaseName);
+  const loadMetadata = async (databaseId: string) => {
+    console.log('Loading metadata for database id:', databaseId);
     dispatch({ type: 'SET_LOADING', payload: { key: 'metadata', value: true } });
     
     try {
-      const metadata = await apiClient.getDatabaseMetadata(databaseName);
+      const metadata = await apiClient.getDatabaseMetadata(databaseId);
       console.log('Metadata loaded successfully:', metadata);
       
       // Only update the global metadata state if the database being loaded is the currently selected one
-      if (databaseName === state.selectedDatabase) {
+      if (databaseId === state.selectedDatabase) {
         dispatch({ type: 'SET_METADATA', payload: metadata });
       }
     } catch (error: any) {
@@ -194,7 +194,7 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
       message.error(errorMessage);
       
       // Only clear the global metadata state if the database being loaded is the currently selected one
-      if (databaseName === state.selectedDatabase) {
+      if (databaseId === state.selectedDatabase) {
         dispatch({ type: 'SET_METADATA', payload: null });
       }
     } finally {
@@ -202,14 +202,14 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
     }
   };
 
-  const selectDatabase = async (databaseName: string | null) => {
+  const selectDatabase = async (databaseId: string | null) => {
     console.log('=== selectDatabase called ===');
-    console.log('New database:', databaseName);
-    console.log('Current database:', state.selectedDatabase);
-    console.log('Are they equal?', databaseName === state.selectedDatabase);
+    console.log('New database id:', databaseId);
+    console.log('Current database id:', state.selectedDatabase);
+    console.log('Are they equal?', databaseId === state.selectedDatabase);
     
     // Don't do anything if selecting the same database
-    if (databaseName === state.selectedDatabase) {
+    if (databaseId === state.selectedDatabase) {
       console.log('Database already selected, skipping');
       return;
     }
@@ -217,16 +217,17 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
     console.log('Dispatching START_DATABASE_SWITCH');
     dispatch({ type: 'START_DATABASE_SWITCH' });
     
-    console.log('Dispatching SET_SELECTED_DATABASE with:', databaseName);
-    dispatch({ type: 'SET_SELECTED_DATABASE', payload: databaseName });
+    console.log('Dispatching SET_SELECTED_DATABASE with:', databaseId);
+    dispatch({ type: 'SET_SELECTED_DATABASE', payload: databaseId });
     
     // Wait for metadata to load (handled by useEffect)
     // We'll complete the switch after a short delay to ensure useEffect has triggered
     setTimeout(() => {
       console.log('Dispatching COMPLETE_DATABASE_SWITCH');
       dispatch({ type: 'COMPLETE_DATABASE_SWITCH' });
-      if (databaseName) {
-        message.success(`Switched to database: ${databaseName}`);
+      if (databaseId) {
+        const database = state.databases.find(db => db.id === databaseId);
+        message.success(`Switched to database: ${database?.name || databaseId}`);
       }
     }, 100);
   };
@@ -239,8 +240,8 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
     dispatch({ type: 'UPDATE_DATABASE', payload: database });
   };
 
-  const removeDatabase = (databaseName: string) => {
-    dispatch({ type: 'REMOVE_DATABASE', payload: databaseName });
+  const removeDatabase = (databaseId: string) => {
+    dispatch({ type: 'REMOVE_DATABASE', payload: databaseId });
   };
 
   const refreshMetadata = async () => {
@@ -249,17 +250,17 @@ export const AppStateProvider: React.FC<AppStateProviderProps> = ({ children }) 
     }
   };
 
-  const refreshDatabaseMetadata = async (databaseName: string) => {
-    console.log('Refreshing metadata for database:', databaseName);
+  const refreshDatabaseMetadata = async (databaseId: string) => {
+    console.log('Refreshing metadata for database id:', databaseId);
     dispatch({ type: 'SET_LOADING', payload: { key: 'metadata', value: true } });
     
     try {
       // Call the refresh endpoint to update metadata on the server and get the latest
-      const metadata = await apiClient.refreshDatabaseMetadata(databaseName);
+      const metadata = await apiClient.refreshDatabaseMetadata(databaseId);
       console.log('Metadata refreshed successfully:', metadata);
       
       // Only update the global metadata state if the database being loaded is the currently selected one
-      if (databaseName === state.selectedDatabase) {
+      if (databaseId === state.selectedDatabase) {
         dispatch({ type: 'SET_METADATA', payload: metadata });
       }
     } catch (error: any) {

@@ -86,19 +86,19 @@ async def init_database():
             """))
         
         await engine.dispose()
-        
-        print(f"✅ Database initialized successfully at: {db_path}")
-        print("📊 Created tables:")
+
+        print(f"[OK] Database initialized successfully at: {db_path}")
+        print("Created tables:")
         print("   - database_connections")
-        print("   - database_metadata") 
+        print("   - database_metadata")
         print("   - query_executions")
         print("   - query_results")
-        print("📈 Created indexes for optimal performance")
-        
+        print("Created indexes for optimal performance")
+
         return True
         
     except Exception as e:
-        print(f"❌ Error initializing database: {e}")
+        print(f"[ERROR] Error initializing database: {e}")
         raise
 
 
@@ -145,15 +145,15 @@ async def check_database_exists():
 async def init_database_if_needed():
     """
     Initialize database only if it doesn't exist or is incomplete.
-    
+
     This function is safe to call during application startup as it
     only initializes the database if needed.
     """
     if not await check_database_exists():
-        print("🔧 Database not found or incomplete, initializing...")
+        print("[INIT] Database not found or incomplete, initializing...")
         await init_database()
     else:
-        print("✅ Database already exists and is complete")
+        print("[OK] Database already exists and is complete")
 
 
 if __name__ == "__main__":

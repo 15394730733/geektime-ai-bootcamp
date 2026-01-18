@@ -398,3 +398,249 @@ GET {{baseUrl}}/../redoc
 # - 所有响应都应该包含 camelCase 格式的 JSON 数据
 # - SQL查询应该正确验证，只允许SELECT语句
 # - 没有LIMIT的查询应该自动添加LIMIT 1000
+
+###
+# =============================================================================
+# MySQL 数据库支持测试 - interview_db
+# =============================================================================
+
+@mysqlDbName = interview-mysql
+@mysqlUrl = mysql://root:sth5805051@localhost:3306/interview_db
+
+### 37. 添加 MySQL 数据库连接 (interview_db)
+PUT {{baseUrl}}/dbs/{{mysqlDbName}}
+Content-Type: {{contentType}}
+
+{
+  "url": "{{mysqlUrl}}",
+  "description": "MySQL面试管理系统数据库 - interview_db"
+}
+
+###
+
+### 38. 获取所有数据库连接 (应该包含新添加的 MySQL 连接)
+GET {{baseUrl}}/dbs
+Content-Type: {{contentType}}
+
+###
+
+### 39. 获取 MySQL 数据库元数据
+GET {{baseUrl}}/dbs/{{mysqlDbName}}
+Content-Type: {{contentType}}
+
+###
+
+### 40. 查询 MySQL 数据库 - 获取所有部门
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT department_id, department_name, department_code, manager_name, employee_count FROM departments ORDER BY employee_count DESC"
+}
+
+###
+
+### 41. 查询 MySQL 数据库 - 获取所有候选人
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT candidate_code, first_name, last_name, email, years_experience, source, status FROM candidates ORDER BY candidate_code LIMIT 10"
+}
+
+###
+
+### 42. 查询 MySQL 数据库 - 获取面试安排
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT i.interview_id, c.first_name, c.last_name, s.stage_name, i.scheduled_date, i.status FROM interviews i JOIN job_applications ja ON i.application_id = ja.application_id JOIN candidates c ON ja.candidate_id = c.candidate_id JOIN interview_stages s ON i.stage_id = s.stage_id WHERE DATE(i.scheduled_date) >= '2024-02-01' ORDER BY i.scheduled_date LIMIT 10"
+}
+
+###
+
+### 43. 查询 MySQL 数据库 - 获取面试评价统计
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT recommendation, COUNT(*) as count, ROUND(AVG(overall_score), 2) as avg_score FROM interview_evaluations GROUP BY recommendation ORDER BY avg_score DESC"
+}
+
+###
+
+### 44. 查询 MySQL 数据库 - 空缺职位统计
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT p.position_title, d.department_name, p.salary_min, p.salary_max, (p.headcount - p.current_count) as openings FROM positions p JOIN departments d ON p.department_id = d.department_id WHERE p.status = 'active' AND (p.headcount - p.current_count) > 0 ORDER BY openings DESC"
+}
+
+###
+
+### 45. 查询 MySQL 数据库 - 候选人技能匹配
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT c.candidate_code, CONCAT(c.first_name, ' ', c.last_name) as candidate_name, s.skill_name, cs.proficiency_level, cs.years_experience FROM candidates c JOIN candidate_skills cs ON c.candidate_id = cs.candidate_id JOIN skills s ON cs.skill_id = s.skill_id WHERE c.candidate_code = 'CAND001' ORDER BY s.category, cs.proficiency_level"
+}
+
+###
+
+### 46. 查询 MySQL 数据库 - 使用视图 (v_candidate_summary)
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT candidate_name, position_title, department_name, application_date, application_status FROM v_candidate_summary WHERE application_status = 'interviewing' ORDER BY application_date DESC LIMIT 10"
+}
+
+###
+
+### 47. 查询 MySQL 数据库 - 使用视图 (v_interview_details)
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT * FROM v_interview_details WHERE scheduled_date > NOW() ORDER BY scheduled_date LIMIT 5"
+}
+
+###
+
+### 48. 查询 MySQL 数据库 - 使用视图 (v_evaluation_summary)
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT candidate_name, position_title, interviewer_name, stage_name, overall_score, recommendation FROM v_evaluation_summary ORDER BY overall_score DESC LIMIT 10"
+}
+
+###
+
+### 49. 查询 MySQL 数据库 - 聚合统计查询
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT source, COUNT(*) as total_candidates, SUM(CASE WHEN status = 'hired' THEN 1 ELSE 0 END) as hired, SUM(CASE WHEN status = 'interviewing' THEN 1 ELSE 0 END) as interviewing FROM candidates GROUP BY source ORDER BY total_candidates DESC"
+}
+
+###
+
+### 50. 查询 MySQL 数据库 - 复杂JOIN查询
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT DISTINCT CONCAT(c.first_name, ' ', c.last_name) as candidate_name, p.position_title, COUNT(DISTINCT ie.evaluation_id) as evaluation_count, ROUND(AVG(ie.overall_score), 2) as avg_score FROM candidates c JOIN job_applications ja ON c.candidate_id = ja.candidate_id JOIN positions p ON ja.position_id = p.position_id JOIN interviews i ON ja.application_id = i.application_id JOIN interview_evaluations ie ON i.interview_id = ie.interview_id GROUP BY c.candidate_id, c.first_name, c.last_name, p.position_title HAVING evaluation_count >= 2 ORDER BY avg_score DESC"
+}
+
+###
+
+# =============================================================================
+# MySQL 自然语言查询测试
+# =============================================================================
+
+### 51. 自然语言查询 - 查看所有部门
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "显示所有部门的信息，包括部门名称、经理和员工数量"
+}
+
+###
+
+### 52. 自然语言查询 - 查找候选人
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "列出所有正在面试中的候选人"
+}
+
+###
+
+### 53. 自然语言查询 - 面试统计
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "统计每个面试阶段的评价数量和平均分数"
+}
+
+###
+
+### 54. 自然语言查询 - 空缺职位
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "显示当前正在招聘的职位，包括薪资范围和空缺人数"
+}
+
+###
+
+### 55. 自然语言查询 - 候选人来源分析
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "分析不同招聘渠道的候选人数量和录用情况"
+}
+
+###
+
+### 56. 自然语言查询 - 面试官工作量
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "统计每个面试官参与的面试次数和完成的评价数量"
+}
+
+###
+
+### 57. 自然语言查询 - 技能分析
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "查找拥有Python技能的候选人，按熟练程度排序"
+}
+
+###
+
+### 58. 自然语言查询 - 近期面试安排
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "显示未来7天的面试安排，包括候选人、面试阶段和时间"
+}
+
+###
+
+### 59. 自然语言查询 - 推荐录用的候选人
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "找出所有获得强烈推荐录用的候选人，显示他们的姓名和职位"
+}
+
+###
+
+### 60. 自然语言查询 - 薪资分析
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "分析不同职位的薪资范围，从高到低排序"
+}
+
+###
+

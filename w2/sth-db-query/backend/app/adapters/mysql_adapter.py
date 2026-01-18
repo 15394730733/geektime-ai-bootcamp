@@ -118,6 +118,7 @@ class MySQLAdapter(DatabaseAdapter):
                     'schema_name': row.get('TABLE_SCHEMA') or row.get('schema_name')
                 }
                 for row in rows
+                if (row.get('TABLE_NAME') or row.get('table_name')) and (row.get('TABLE_SCHEMA') or row.get('schema_name'))
             ]
 
     async def get_views(self, connection: aiomysql.Connection) -> List[Dict[str, Any]]:
@@ -149,6 +150,7 @@ class MySQLAdapter(DatabaseAdapter):
                     'schema_name': row.get('TABLE_SCHEMA') or row.get('schema_name')
                 }
                 for row in rows
+                if (row.get('TABLE_NAME') or row.get('table_name')) and (row.get('TABLE_SCHEMA') or row.get('schema_name'))
             ]
 
     async def get_columns(
