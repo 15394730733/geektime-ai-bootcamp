@@ -6,7 +6,7 @@
  * Manages multiple query tabs with independent state for each tab.
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { TabBar } from './TabBar';
 import { QueryEditor } from './QueryEditor';
@@ -45,6 +45,15 @@ export const QueryPanel: React.FC<QueryPanelProps> = ({
   onVerticalSplitChange,
   onNaturalLanguageQuery,
 }) => {
+  // Auto-export state (default: both checked)
+  const [autoExportCSV, setAutoExportCSV] = useState(true);
+  const [autoExportJSON, setAutoExportJSON] = useState(true);
+
+  const handleAutoExportChange = (csv: boolean, json: boolean) => {
+    setAutoExportCSV(csv);
+    setAutoExportJSON(json);
+  };
+
   // Debug: Log when databaseName prop changes
   React.useEffect(() => {
     console.log('QueryPanel: databaseName prop changed to:', databaseName);
@@ -119,6 +128,9 @@ export const QueryPanel: React.FC<QueryPanelProps> = ({
                   loading={loading}
                   height={undefined}
                   onNaturalLanguageQuery={onNaturalLanguageQuery}
+                  autoExportCSV={autoExportCSV}
+                  autoExportJSON={autoExportJSON}
+                  onAutoExportChange={handleAutoExportChange}
                 />
               </div>
             </div>
@@ -151,6 +163,8 @@ export const QueryPanel: React.FC<QueryPanelProps> = ({
                     truncated={activeTab.results.truncated}
                     loading={loading}
                     query={activeTab.query}
+                    autoExportCSV={autoExportCSV}
+                    autoExportJSON={autoExportJSON}
                   />
                 ) : (
                   <QueryResults
@@ -161,6 +175,8 @@ export const QueryPanel: React.FC<QueryPanelProps> = ({
                     truncated={false}
                     loading={loading}
                     query={activeTab.query}
+                    autoExportCSV={autoExportCSV}
+                    autoExportJSON={autoExportJSON}
                   />
                 )}
               </div>

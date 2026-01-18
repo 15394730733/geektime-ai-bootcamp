@@ -104,6 +104,7 @@ class MySQLAdapter(DatabaseAdapter):
                 TABLE_NAME as table_name
             FROM information_schema.TABLES
             WHERE TABLE_TYPE = 'BASE TABLE'
+                AND TABLE_SCHEMA = DATABASE()
                 AND TABLE_SCHEMA NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')
             ORDER BY TABLE_SCHEMA, TABLE_NAME
         """
@@ -136,7 +137,8 @@ class MySQLAdapter(DatabaseAdapter):
                 TABLE_SCHEMA as schema_name,
                 TABLE_NAME as view_name
             FROM information_schema.VIEWS
-            WHERE TABLE_SCHEMA NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')
+            WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_SCHEMA NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')
             ORDER BY TABLE_SCHEMA, TABLE_NAME
         """
 
@@ -308,7 +310,9 @@ class MySQLAdapter(DatabaseAdapter):
             'columns': columns,
             'rows': rows_list,
             'row_count': len(rows_list) if rows_list else row_count,
+            'rowCount': len(rows_list) if rows_list else row_count,  # Frontend expects camelCase
             'execution_time_ms': execution_time_ms,
+            'executionTimeMs': execution_time_ms,  # Frontend expects camelCase
         }
 
     def serialize_value(self, value: Any) -> Any:

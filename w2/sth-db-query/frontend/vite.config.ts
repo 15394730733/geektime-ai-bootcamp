@@ -20,6 +20,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['monaco-editor'],
+    exclude: ['@monaco-editor/react']
   },
   build: {
     rollupOptions: {
@@ -29,5 +30,9 @@ export default defineConfig({
         }
       }
     }
+  },
+  // Configure Monaco Editor worker paths
+  worker: {
+    format: 'es'
   }
 })

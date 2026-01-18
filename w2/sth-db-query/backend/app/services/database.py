@@ -596,6 +596,7 @@ class DatabaseService:
                 if len(result['rows']) > max_rows:
                     result['rows'] = result['rows'][:max_rows]
                     result['row_count'] = max_rows
+                    result['rowCount'] = max_rows  # Also update camelCase version
                     truncated = True
 
                 result['truncated'] = truncated
@@ -641,6 +642,7 @@ class DatabaseService:
                 if len(result['rows']) > max_rows:
                     result['rows'] = result['rows'][:max_rows]
                     result['row_count'] = max_rows
+                    result['rowCount'] = max_rows  # Also update camelCase version
                     truncated = True
 
                 result['truncated'] = truncated

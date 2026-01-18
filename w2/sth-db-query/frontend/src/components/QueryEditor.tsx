@@ -5,14 +5,17 @@
  */
 
 import React, { useRef, useState } from 'react';
-import { Button, Space, Segmented } from 'antd';
+import { Button, Space, Segmented, Checkbox } from 'antd';
 import { PlayCircleOutlined, ClearOutlined, CodeOutlined, MessageOutlined } from '@ant-design/icons';
-import Editor from '@monaco-editor/react';
-import * as monaco from 'monaco-editor';
+import Editor, { OnMount } from '@monaco-editor/react';
+import type * as monaco from 'monaco-editor';
 
-// Create a loader function that returns a local monaco instance
-const loader = () => {
-  return Promise.resolve(monaco);
+// Configure Monaco to avoid CDN worker loading issues
+const beforeMount = (monaco: typeof import('monaco-editor')) => {
+  // Disable worker loading to prevent CDN timeout
+  (self as any).MonacoEnvironment = {
+    getWorker: () => null as any
+  };
 };
 
 interface QueryEditorProps {
@@ -22,6 +25,9 @@ interface QueryEditorProps {
   loading?: boolean;
   height?: number;
   onNaturalLanguageQuery?: (prompt: string) => Promise<void>;
+  autoExportCSV?: boolean;
+  autoExportJSON?: boolean;
+  onAutoExportChange?: (csv: boolean, json: boolean) => void;
 }
 
 type QueryMode = 'sql' | 'natural';
@@ -33,6 +39,9 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
   loading = false,
   height,
   onNaturalLanguageQuery,
+  autoExportCSV = true,
+  autoExportJSON = true,
+  onAutoExportChange,
 }) => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const [queryMode, setQueryMode] = useState<QueryMode>('sql');
@@ -41,11 +50,11 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
 
   console.log('QueryEditor rendering, value:', value, 'height:', height);
 
-  const handleEditorDidMount = (editor: monaco.editor.IStandaloneCodeEditor) => {
+  const handleEditorDidMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
-    
+
     console.log('Monaco Editor mounted', editor);
-    
+
     // Configure SQL language features
     monaco.languages.setLanguageConfiguration('sql', {
       comments: {
@@ -148,6 +157,18 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
           />
         </Space>
         <Space>
+          <Checkbox
+            checked={autoExportCSV}
+            onChange={(e) => onAutoExportChange?.(e.target.checked, autoExportJSON)}
+          >
+            CSV
+          </Checkbox>
+          <Checkbox
+            checked={autoExportJSON}
+            onChange={(e) => onAutoExportChange?.(autoExportCSV, e.target.checked)}
+          >
+            JSON
+          </Checkbox>
           <Button
             icon={<ClearOutlined />}
             onClick={handleClear}
@@ -183,7 +204,7 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
             value={value}
             onChange={handleEditorChange}
             onMount={handleEditorDidMount}
-            loader={loader}
+            beforeMount={beforeMount}
             options={{
               minimap: { enabled: false },
               scrollBeyondLastLine: false,

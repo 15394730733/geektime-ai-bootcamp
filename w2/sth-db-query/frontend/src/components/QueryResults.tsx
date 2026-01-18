@@ -4,7 +4,7 @@
  * Displays SQL query results in a table format with export functionality
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Table, Card, Typography, Tag, Space, Button, message } from 'antd';
 import { DownloadOutlined, CopyOutlined } from '@ant-design/icons';
 
@@ -18,6 +18,8 @@ interface QueryResultsProps {
   truncated?: boolean;
   loading?: boolean;
   query?: string;
+  autoExportCSV?: boolean;
+  autoExportJSON?: boolean;
 }
 
 export const QueryResults: React.FC<QueryResultsProps> = ({
@@ -27,9 +29,14 @@ export const QueryResults: React.FC<QueryResultsProps> = ({
   executionTimeMs,
   truncated = false,
   loading = false,
-  query = ''
+  query = '',
+  autoExportCSV = true,
+  autoExportJSON = true,
 }) => {
   console.log('QueryResults props:', { columns, rows, rowCount, executionTimeMs, truncated, loading });
+
+  // Track previously exported results to prevent duplicate exports
+  const lastExportedResultsRef = useRef<string>('');
 
   const tableColumns = columns.map((col, index) => ({
     title: col,
@@ -75,28 +82,48 @@ export const QueryResults: React.FC<QueryResultsProps> = ({
 
   const convertToCSV = (data: any[], columns: string[]): string => {
     const headers = columns.join(',');
-    const csvRows = data.map(row => 
-      columns.map((col, colIndex) => {
-        const value = Array.isArray(row) ? row[colIndex] : row[col];
-        // Handle null/undefined values
+    const csvRows = data.map(row => {
+      // Handle array rows (converted tableData format)
+      if (typeof row === 'object' && !Array.isArray(row)) {
+        return columns.map((col, colIndex) => {
+          const value = row[colIndex]; // Access by numeric index
+          // Handle null/undefined values
+          if (value == null) return '';
+          // Escape quotes and wrap in quotes if contains comma, quote, or newline
+          const stringValue = String(value);
+          if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+            return `"${stringValue.replace(/"/g, '""')}"`;
+          }
+          return stringValue;
+        }).join(',');
+      }
+      // Handle original array rows format
+      return row.map((value: any) => {
         if (value == null) return '';
-        // Escape quotes and wrap in quotes if contains comma, quote, or newline
         const stringValue = String(value);
         if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
           return `"${stringValue.replace(/"/g, '""')}"`;
         }
         return stringValue;
-      }).join(',')
-    );
+      }).join(',');
+    });
     return [headers, ...csvRows].join('\n');
   };
 
   const convertToJSON = (data: any[], columns: string[]): string => {
     const jsonData = data.map(row => {
       const obj: any = {};
-      columns.forEach((col, colIndex) => {
-        obj[col] = Array.isArray(row) ? row[colIndex] : row[col];
-      });
+      // Handle array rows (converted tableData format)
+      if (typeof row === 'object' && !Array.isArray(row)) {
+        columns.forEach((col, colIndex) => {
+          obj[col] = row[colIndex]; // Access by numeric index
+        });
+      } else {
+        // Handle original array rows format
+        columns.forEach((col, colIndex) => {
+          obj[col] = row[colIndex];
+        });
+      }
       return obj;
     });
     return JSON.stringify(jsonData, null, 2);
@@ -173,6 +200,42 @@ export const QueryResults: React.FC<QueryResultsProps> = ({
       return `${minutes}m ${seconds}s`;
     }
   };
+
+  // Auto-export effect: Trigger exports when results change
+  useEffect(() => {
+    // Only auto-export if:
+    // 1. Not currently loading
+    // 2. Results exist (has rows)
+    // 3. Results are different from last export (prevent duplicates)
+    if (!loading && rows.length > 0) {
+      const currentResultsHash = JSON.stringify({ columns, rows });
+
+      // Check if this is a new result set (not the same as last exported)
+      if (currentResultsHash !== lastExportedResultsRef.current) {
+        // Trigger auto-exports based on checkbox configuration
+        if (autoExportCSV) {
+          try {
+            handleExportCSV();
+          } catch (error) {
+            console.error('Auto-export CSV failed:', error);
+            // Don't show message for auto-export failures
+          }
+        }
+
+        if (autoExportJSON) {
+          try {
+            handleExportJSON();
+          } catch (error) {
+            console.error('Auto-export JSON failed:', error);
+            // Don't show message for auto-export failures
+          }
+        }
+
+        // Mark this result set as exported
+        lastExportedResultsRef.current = currentResultsHash;
+      }
+    }
+  }, [rows, columns, loading, autoExportCSV, autoExportJSON]);
 
   return (
     <Card

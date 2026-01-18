@@ -260,7 +260,9 @@ class PostgreSQLAdapter(DatabaseAdapter):
             'columns': columns,
             'rows': rows_list,
             'row_count': len(rows_list) if rows_list else row_count,
+            'rowCount': len(rows_list) if rows_list else row_count,  # Frontend expects camelCase
             'execution_time_ms': execution_time_ms,
+            'executionTimeMs': execution_time_ms,  # Frontend expects camelCase
         }
 
     def serialize_value(self, value: Any) -> Any:
