@@ -183,7 +183,7 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
             loading={loading}
             size="small"
           >
-            {queryMode === 'sql' ? 'Execute (Ctrl+Enter)' : 'Convert & Execute'}
+            {queryMode === 'sql' ? 'Execute (Ctrl+Enter)' : 'Convert'}
           </Button>
         </Space>
       </div>
