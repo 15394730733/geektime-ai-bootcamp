@@ -1,0 +1,646 @@
+# Database Query Tool API Tests
+# 使用 VSCode REST Client 扩展执行这些测试
+# 确保后端服务运行在 http://localhost:8000
+
+@baseUrl = http://localhost:8000/api/v1
+@dbName = test-db
+@contentType = application/json
+
+###
+# 健康检查
+GET {{baseUrl}}/../health
+
+###
+
+# =============================================================================
+# 数据库连接管理 API 测试
+# =============================================================================
+
+### 1. 获取所有数据库连接 (初始状态 - 应该为空)
+GET {{baseUrl}}/dbs
+Content-Type: {{contentType}}
+
+###
+
+### 2. 添加新的数据库连接 (PostgreSQL)
+PUT {{baseUrl}}/dbs/{{dbName}}
+Content-Type: {{contentType}}
+
+{
+  "url": "postgresql://postgres:postgres@localhost:5432/test_db",
+  "description": "本地PostgreSQL数据库 - test_db"
+}
+
+###
+
+### 3. 添加数据库连接 - 无效URL (应该失败)
+PUT {{baseUrl}}/dbs/invalid-db
+Content-Type: {{contentType}}
+
+{
+  "url": "invalid-url",
+  "description": "无效的数据库URL测试"
+}
+
+###
+
+### 4. 添加数据库连接 - 重复名称 (应该失败)
+PUT {{baseUrl}}/dbs/{{dbName}}
+Content-Type: {{contentType}}
+
+{
+  "url": "postgresql://user:pass@localhost:5432/another_db",
+  "description": "重复名称测试"
+}
+
+###
+
+### 5. 获取所有数据库连接 (应该包含新添加的连接)
+GET {{baseUrl}}/dbs
+Content-Type: {{contentType}}
+
+###
+
+# =============================================================================
+# 数据库元数据 API 测试
+# =============================================================================
+
+### 6. 获取数据库元数据
+GET {{baseUrl}}/dbs/{{dbName}}
+Content-Type: {{contentType}}
+
+###
+
+### 7. 获取不存在的数据库元数据 (应该失败)
+GET {{baseUrl}}/dbs/non-existent-db
+Content-Type: {{contentType}}
+
+###
+
+# =============================================================================
+# SQL 查询 API 测试
+# =============================================================================
+
+### 8. 执行简单的SELECT查询
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT id, name FROM users LIMIT 5"
+}
+
+###
+
+### 9. 执行聚合查询
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT COUNT(*) as total_users, AVG(amount) as avg_amount FROM orders"
+}
+
+###
+
+### 10. 执行JOIN查询
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT u.name, o.amount, o.status FROM users u JOIN orders o ON u.id = o.user_id LIMIT 10"
+}
+
+###
+
+### 11. 执行SQL查询 - 没有LIMIT (应该自动添加LIMIT 1000)
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT * FROM users"
+}
+
+###
+
+### 12. 执行SQL查询 - 包含非SELECT语句 (应该失败)
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "INSERT INTO users (name, email) VALUES ('Test', 'test@example.com')"
+}
+
+###
+
+### 13. 执行SQL查询 - 语法错误 (应该失败)
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT * FROM invalid_table_name"
+}
+
+###
+
+### 14. 执行SQL查询 - 不存在的数据库 (应该失败)
+POST {{baseUrl}}/dbs/non-existent-db/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT 1"
+}
+
+###
+
+# =============================================================================
+# 自然语言查询 API 测试
+# =============================================================================
+
+### 15. 自然语言查询 - 简单查询
+POST {{baseUrl}}/dbs/{{dbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "显示所有用户的信息"
+}
+
+###
+
+### 16. 自然语言查询 - 聚合查询
+POST {{baseUrl}}/dbs/{{dbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "计算订单的总金额和平均值"
+}
+
+###
+
+### 17. 自然语言查询 - JOIN查询
+POST {{baseUrl}}/dbs/{{dbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "显示每个用户的姓名和他们的订单金额"
+}
+
+###
+
+### 18. 自然语言查询 - 复杂条件查询
+POST {{baseUrl}}/dbs/{{dbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "查找所有已完成的订单，显示用户姓名、订单金额和创建时间"
+}
+
+###
+
+### 19. 自然语言查询 - 不存在的数据库 (应该失败)
+POST {{baseUrl}}/dbs/non-existent-db/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "显示用户表"
+}
+
+###
+
+### 20. 自然语言查询 - 空提示 (应该失败)
+POST {{baseUrl}}/dbs/{{dbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": ""
+}
+
+###
+
+# =============================================================================
+# 错误处理测试
+# =============================================================================
+
+### 21. 测试CORS预检请求
+OPTIONS {{baseUrl}}/dbs
+Origin: http://localhost:5173
+Access-Control-Request-Method: GET
+
+###
+
+### 22. 测试无效的HTTP方法
+DELETE {{baseUrl}}/dbs/{{dbName}}
+Content-Type: {{contentType}}
+
+###
+
+### 23. 测试无效的JSON格式
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT 1"
+  // 缺少逗号 - 无效JSON
+}
+
+###
+
+# =============================================================================
+# 性能和负载测试
+# =============================================================================
+
+### 24. 大结果集查询测试
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT * FROM users u CROSS JOIN orders o LIMIT 100"
+}
+
+###
+
+### 25. 复杂查询性能测试
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT u.name, COUNT(o.id) as order_count, SUM(o.amount) as total_spent, AVG(o.amount) as avg_order FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id, u.name ORDER BY total_spent DESC"
+}
+
+###
+
+# =============================================================================
+# 边界情况测试
+# =============================================================================
+
+### 26. 空结果查询
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT * FROM users WHERE id > 99999"
+}
+
+###
+
+### 27. 单行结果查询
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT COUNT(*) as total FROM users"
+}
+
+###
+
+### 28. 大文本字段查询
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT name, email, 'This is a very long text field that might contain a lot of data and should be handled properly by the API response formatting system. ' || 'It continues here with more text to test how the system handles large text content in query results.' as description FROM users LIMIT 3"
+}
+
+###
+
+# =============================================================================
+# 安全性测试
+# =============================================================================
+
+### 29. SQL注入尝试 - 字符串拼接 (应该失败)
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT * FROM users WHERE name = 'admin'; DROP TABLE users; --'"
+}
+
+###
+
+### 30. SQL注入尝试 - UNION攻击 (应该失败)
+POST {{baseUrl}}/dbs/{{dbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT name FROM users UNION SELECT password FROM admin_table"
+}
+
+###
+
+# =============================================================================
+# 自然语言查询边界测试
+# =============================================================================
+
+### 31. 模糊查询意图
+POST {{baseUrl}}/dbs/{{dbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "帮我看看数据"
+}
+
+###
+
+### 32. 多表复杂关系查询
+POST {{baseUrl}}/dbs/{{dbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "分析用户的购买行为模式，包括最受欢迎的产品、用户平均消费金额、订单完成率等统计信息"
+}
+
+###
+
+### 33. 时间相关查询
+POST {{baseUrl}}/dbs/{{dbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "显示最近7天的订单数据"
+}
+
+###
+
+# =============================================================================
+# API文档和发现测试
+# =============================================================================
+
+### 34. 获取OpenAPI规范
+GET {{baseUrl}}/openapi.json
+
+###
+
+### 35. 访问API文档页面
+GET {{baseUrl}}/../docs
+
+###
+
+### 36. 访问ReDoc文档页面
+GET {{baseUrl}}/../redoc
+
+###
+
+# =============================================================================
+# 测试总结报告
+# =============================================================================
+# 测试覆盖范围：
+# ✅ 数据库连接管理 (CRUD操作)
+# ✅ 元数据检索和缓存
+# ✅ SQL查询执行和验证
+# ✅ 自然语言查询转换
+# ✅ 错误处理和边界情况
+# ✅ 安全性测试 (SQL注入防护)
+# ✅ 性能测试 (大结果集、复杂查询)
+# ✅ CORS和跨域支持
+# ✅ API文档和发现
+#
+# 预期测试结果：
+# - 成功的请求应该返回 200 状态码和正确的数据
+# - 失败的请求应该返回适当的错误状态码 (400, 403, 404, 500)
+# - 所有响应都应该包含 camelCase 格式的 JSON 数据
+# - SQL查询应该正确验证，只允许SELECT语句
+# - 没有LIMIT的查询应该自动添加LIMIT 1000
+
+###
+# =============================================================================
+# MySQL 数据库支持测试 - interview_db
+# =============================================================================
+
+@mysqlDbName = interview-mysql
+@mysqlUrl = mysql://root:sth5805051@localhost:3306/interview_db
+
+### 37. 添加 MySQL 数据库连接 (interview_db)
+PUT {{baseUrl}}/dbs/{{mysqlDbName}}
+Content-Type: {{contentType}}
+
+{
+  "url": "{{mysqlUrl}}",
+  "description": "MySQL面试管理系统数据库 - interview_db"
+}
+
+###
+
+### 38. 获取所有数据库连接 (应该包含新添加的 MySQL 连接)
+GET {{baseUrl}}/dbs
+Content-Type: {{contentType}}
+
+###
+
+### 39. 获取 MySQL 数据库元数据
+GET {{baseUrl}}/dbs/{{mysqlDbName}}
+Content-Type: {{contentType}}
+
+###
+
+### 40. 查询 MySQL 数据库 - 获取所有部门
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT department_id, department_name, department_code, manager_name, employee_count FROM departments ORDER BY employee_count DESC"
+}
+
+###
+
+### 41. 查询 MySQL 数据库 - 获取所有候选人
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT candidate_code, first_name, last_name, email, years_experience, source, status FROM candidates ORDER BY candidate_code LIMIT 10"
+}
+
+###
+
+### 42. 查询 MySQL 数据库 - 获取面试安排
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT i.interview_id, c.first_name, c.last_name, s.stage_name, i.scheduled_date, i.status FROM interviews i JOIN job_applications ja ON i.application_id = ja.application_id JOIN candidates c ON ja.candidate_id = c.candidate_id JOIN interview_stages s ON i.stage_id = s.stage_id WHERE DATE(i.scheduled_date) >= '2024-02-01' ORDER BY i.scheduled_date LIMIT 10"
+}
+
+###
+
+### 43. 查询 MySQL 数据库 - 获取面试评价统计
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT recommendation, COUNT(*) as count, ROUND(AVG(overall_score), 2) as avg_score FROM interview_evaluations GROUP BY recommendation ORDER BY avg_score DESC"
+}
+
+###
+
+### 44. 查询 MySQL 数据库 - 空缺职位统计
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT p.position_title, d.department_name, p.salary_min, p.salary_max, (p.headcount - p.current_count) as openings FROM positions p JOIN departments d ON p.department_id = d.department_id WHERE p.status = 'active' AND (p.headcount - p.current_count) > 0 ORDER BY openings DESC"
+}
+
+###
+
+### 45. 查询 MySQL 数据库 - 候选人技能匹配
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT c.candidate_code, CONCAT(c.first_name, ' ', c.last_name) as candidate_name, s.skill_name, cs.proficiency_level, cs.years_experience FROM candidates c JOIN candidate_skills cs ON c.candidate_id = cs.candidate_id JOIN skills s ON cs.skill_id = s.skill_id WHERE c.candidate_code = 'CAND001' ORDER BY s.category, cs.proficiency_level"
+}
+
+###
+
+### 46. 查询 MySQL 数据库 - 使用视图 (v_candidate_summary)
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT candidate_name, position_title, department_name, application_date, application_status FROM v_candidate_summary WHERE application_status = 'interviewing' ORDER BY application_date DESC LIMIT 10"
+}
+
+###
+
+### 47. 查询 MySQL 数据库 - 使用视图 (v_interview_details)
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT * FROM v_interview_details WHERE scheduled_date > NOW() ORDER BY scheduled_date LIMIT 5"
+}
+
+###
+
+### 48. 查询 MySQL 数据库 - 使用视图 (v_evaluation_summary)
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT candidate_name, position_title, interviewer_name, stage_name, overall_score, recommendation FROM v_evaluation_summary ORDER BY overall_score DESC LIMIT 10"
+}
+
+###
+
+### 49. 查询 MySQL 数据库 - 聚合统计查询
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT source, COUNT(*) as total_candidates, SUM(CASE WHEN status = 'hired' THEN 1 ELSE 0 END) as hired, SUM(CASE WHEN status = 'interviewing' THEN 1 ELSE 0 END) as interviewing FROM candidates GROUP BY source ORDER BY total_candidates DESC"
+}
+
+###
+
+### 50. 查询 MySQL 数据库 - 复杂JOIN查询
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query
+Content-Type: {{contentType}}
+
+{
+  "sql": "SELECT DISTINCT CONCAT(c.first_name, ' ', c.last_name) as candidate_name, p.position_title, COUNT(DISTINCT ie.evaluation_id) as evaluation_count, ROUND(AVG(ie.overall_score), 2) as avg_score FROM candidates c JOIN job_applications ja ON c.candidate_id = ja.candidate_id JOIN positions p ON ja.position_id = p.position_id JOIN interviews i ON ja.application_id = i.application_id JOIN interview_evaluations ie ON i.interview_id = ie.interview_id GROUP BY c.candidate_id, c.first_name, c.last_name, p.position_title HAVING evaluation_count >= 2 ORDER BY avg_score DESC"
+}
+
+###
+
+# =============================================================================
+# MySQL 自然语言查询测试
+# =============================================================================
+
+### 51. 自然语言查询 - 查看所有部门
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "显示所有部门的信息，包括部门名称、经理和员工数量"
+}
+
+###
+
+### 52. 自然语言查询 - 查找候选人
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "列出所有正在面试中的候选人"
+}
+
+###
+
+### 53. 自然语言查询 - 面试统计
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "统计每个面试阶段的评价数量和平均分数"
+}
+
+###
+
+### 54. 自然语言查询 - 空缺职位
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "显示当前正在招聘的职位，包括薪资范围和空缺人数"
+}
+
+###
+
+### 55. 自然语言查询 - 候选人来源分析
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "分析不同招聘渠道的候选人数量和录用情况"
+}
+
+###
+
+### 56. 自然语言查询 - 面试官工作量
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "统计每个面试官参与的面试次数和完成的评价数量"
+}
+
+###
+
+### 57. 自然语言查询 - 技能分析
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "查找拥有Python技能的候选人，按熟练程度排序"
+}
+
+###
+
+### 58. 自然语言查询 - 近期面试安排
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "显示未来7天的面试安排，包括候选人、面试阶段和时间"
+}
+
+###
+
+### 59. 自然语言查询 - 推荐录用的候选人
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "找出所有获得强烈推荐录用的候选人，显示他们的姓名和职位"
+}
+
+###
+
+### 60. 自然语言查询 - 薪资分析
+POST {{baseUrl}}/dbs/{{mysqlDbName}}/query/natural
+Content-Type: {{contentType}}
+
+{
+  "prompt": "分析不同职位的薪资范围，从高到低排序"
+}
+
+###
+

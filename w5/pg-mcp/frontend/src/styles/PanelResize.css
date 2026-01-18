@@ -1,0 +1,108 @@
+/* Panel Resize Handle Styles */
+
+/* Horizontal resize handle (between left and right panels) */
+.panel-resize-handle-horizontal {
+  width: 4px;
+  background: #f0f0f0;
+  border-left: 1px solid #e8e8e8;
+  border-right: 1px solid #e8e8e8;
+  cursor: col-resize;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.panel-resize-handle-horizontal:hover {
+  background: #1890ff;
+  border-color: #1890ff;
+  width: 6px;
+}
+
+.panel-resize-handle-horizontal:active {
+  background: #096dd9;
+  border-color: #096dd9;
+  width: 6px;
+}
+
+/* Add visual indicator on hover */
+.panel-resize-handle-horizontal:hover::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 20px;
+  background: white;
+  border-radius: 1px;
+  opacity: 0.8;
+}
+
+/* Vertical resize handle (between editor and results) */
+.panel-resize-handle-vertical {
+  height: 4px;
+  background: #f0f0f0;
+  border-top: 1px solid #e8e8e8;
+  border-bottom: 1px solid #e8e8e8;
+  cursor: row-resize;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.panel-resize-handle-vertical:hover {
+  background: #1890ff;
+  border-color: #1890ff;
+  height: 6px;
+}
+
+.panel-resize-handle-vertical:active {
+  background: #096dd9;
+  border-color: #096dd9;
+  height: 6px;
+}
+
+/* Add visual indicator on hover */
+.panel-resize-handle-vertical:hover::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 2px;
+  background: white;
+  border-radius: 1px;
+  opacity: 0.8;
+}
+
+/* Focus states for accessibility */
+.panel-resize-handle-horizontal:focus,
+.panel-resize-handle-vertical:focus {
+  outline: 2px solid #1890ff;
+  outline-offset: 2px;
+}
+
+/* Disabled state */
+.panel-resize-handle-horizontal.disabled,
+.panel-resize-handle-vertical.disabled {
+  cursor: not-allowed;
+  background: #f5f5f5;
+  border-color: #f0f0f0;
+}
+
+.panel-resize-handle-horizontal.disabled:hover,
+.panel-resize-handle-vertical.disabled:hover {
+  background: #f5f5f5;
+  border-color: #f0f0f0;
+  width: 4px;
+  height: 4px;
+}
+
+/* Expand click area for Segmented component items */
+.ant-segmented-item {
+  padding: 8px 16px !important;
+}
+
+.ant-segmented-item-label {
+  padding: 0 !important;
+  margin: 0 !important;
+}

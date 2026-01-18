@@ -169,13 +169,17 @@ async def update_database(
 
 @router.get("/{id}")
 async def get_database_metadata(id: str, db: AsyncSession = Depends(get_db)):
-    """Get metadata for a specific database by ID."""
+    """Get metadata for a specific database by ID or name."""
     try:
-        # Get database connection by ID
+        # First try to get database by ID
         database = await database_service.get_database(db, id)
         
+        # If not found by ID, try by name
         if not database:
-            raise HTTPException(status_code=404, detail=f"Database with id '{id}' not found")
+            database = await database_service.get_database_by_name(db, id)
+        
+        if not database:
+            raise HTTPException(status_code=404, detail=f"Database with id or name '{id}' not found")
 
         # Get metadata for this database
         metadata = await database_service.get_database_metadata(db, database.name)
