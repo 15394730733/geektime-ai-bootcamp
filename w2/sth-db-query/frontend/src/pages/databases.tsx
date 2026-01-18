@@ -57,11 +57,8 @@ export const DatabaseListPage = () => {
   };
 
   const handleDatabaseClick = (databaseId: string) => {
-    // Find the database by id to get its name
-    const database = state.databases.find(db => db.id === databaseId);
-    const databaseName = database?.name || databaseId;
-    // Navigate to query page with database name as URL parameter
-    navigate(`/query?db=${encodeURIComponent(databaseName)}`);
+    // Navigate to query page with database id as URL parameter
+    navigate(`/query?db=${encodeURIComponent(databaseId)}`);
   };
 
   const handleRefreshAll = async () => {
