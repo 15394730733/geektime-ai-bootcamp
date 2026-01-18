@@ -17,7 +17,6 @@ export interface DatabaseListProps {
   onEdit?: (database: DatabaseConnection) => void;
   onDelete?: (id: string) => void;
   onRefresh?: () => void;
-  onRefreshDatabase?: (databaseName: string) => void;
   onDatabaseClick?: (databaseName: string) => void;
 }
 
@@ -58,7 +57,6 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
   onEdit,
   onDelete,
   onRefresh,
-  onRefreshDatabase,
   onDatabaseClick,
 }) => {
   const databases = data || [];
@@ -82,7 +80,7 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
             cursor: 'pointer',
           }}
           styles={{ body: { padding: '12px 16px' } }}
-          onClick={() => onDatabaseClick?.(database.name)}
+          onClick={() => onDatabaseClick?.(database.id)}
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -90,7 +88,7 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
                 <DatabaseOutlined style={{ marginRight: 8, color: '#1890ff' }} />
                 <Title level={5} style={{ margin: 0, fontSize: '14px' }} ellipsis>
                   {database.name}
-                </Title>
+shua                </Title>
               </div>
               
               {database.description && (
@@ -154,31 +152,6 @@ export const DatabaseList: React.FC<DatabaseListProps> = ({
                 }}
               >
                 Edit
-              </Button>
-            </div>
-            
-            {/* Update Button */}
-            <div
-              style={{
-                marginRight: '8px',
-                flex: 1,
-                textAlign: 'right',
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onRefreshDatabase?.(database.name);
-              }}
-            >
-              <Button
-                type="link"
-                size="small"
-                style={{ 
-                  padding: '8px 16px', 
-                  width: '100%',
-                  textAlign: 'right'
-                }}
-              >
-                Update
               </Button>
             </div>
             
