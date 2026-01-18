@@ -10,7 +10,7 @@ import { PlayCircleOutlined, ClearOutlined, CodeOutlined, MessageOutlined } from
 import Editor from '@monaco-editor/react';
 import * as monaco from 'monaco-editor';
 
-// Create a loader function that returns the local monaco instance
+// Create a loader function that returns a local monaco instance
 const loader = () => {
   return Promise.resolve(monaco);
 };
@@ -37,6 +37,7 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const [queryMode, setQueryMode] = useState<QueryMode>('sql');
   const [naturalLanguageInput, setNaturalLanguageInput] = useState('');
+  const [editorReady, setEditorReady] = useState(false);
 
   console.log('QueryEditor rendering, value:', value, 'height:', height);
 
@@ -75,6 +76,9 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
         onExecute();
       }
     });
+
+    // Mark editor as ready
+    setEditorReady(true);
 
     // Focus the editor after a short delay
     setTimeout(() => {
@@ -211,6 +215,7 @@ export const QueryEditor: React.FC<QueryEditorProps> = ({
               domReadOnly: false,
             }}
             theme="vs"
+            loading={loading && !editorReady ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>Loading editor...</div> : undefined}
           />
         ) : (
           <div style={{ padding: '16px', height: '100%', display: 'flex', flexDirection: 'column' }}>
