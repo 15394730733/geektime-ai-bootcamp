@@ -305,7 +305,7 @@ export const QueryPage: React.FC = () => {
                   console.log('Type:', typeof value);
                   console.log('Current state.selectedDatabase:', state.selectedDatabase);
                   
-                  // Force immediate update by calling with the value
+                  // Force immediate update by calling with value
                   if (value && value !== state.selectedDatabase) {
                     actions.selectDatabase(value);
                   }
@@ -320,7 +320,7 @@ export const QueryPage: React.FC = () => {
                 notFoundContent="No databases available"
               >
                 {activeDatabases.map(db => (
-                  <Select.Option key={db.name} value={db.name}>
+                  <Select.Option key={db.id} value={db.id}>
                     {db.name}
                     {db.description && ` - ${db.description}`}
                   </Select.Option>

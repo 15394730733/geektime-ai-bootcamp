@@ -1,5 +1,0 @@
-{
-  "name": "test_db",
-  "url": "postgresql://postgres:postgres@localhost:5432/test_db",
-  "description": "本地PostgreSQL数据库 - test_db"
-}
